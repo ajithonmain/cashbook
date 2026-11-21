@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/security/advisories
+    url: https://github.com/ajithonmain/cashbook/security/advisories/new
     about: Use the repository's private vulnerability reporting (Security tab), not a public issue.

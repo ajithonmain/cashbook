@@ -46,5 +46,13 @@
   "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ajithonmain/cashbook.git"
+  },
+  "homepage": "https://github.com/ajithonmain/cashbook#readme",
+  "bugs": {
+    "url": "https://github.com/ajithonmain/cashbook/issues"
   }
 }

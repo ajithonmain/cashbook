@@ -25,7 +25,7 @@ Stack: React, Vite, Tailwind, IndexedDB (`idb`), Cloudflare Pages + Functions + 
 You need a free Cloudflare account and Node 18+.
 
 ```bash
-git clone <this-repo-url> cashbook
+git clone https://github.com/ajithonmain/cashbook.git
 cd cashbook
 npm install
 npx wrangler login      # opens your browser once

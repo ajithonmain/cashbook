@@ -12,7 +12,7 @@ Thanks for helping. CashBook is small on purpose: offline-first, private, easy t
 ## Set up
 
 ```bash
-git clone <your-fork-url>
+git clone https://github.com/<your-username>/cashbook.git
 cd cashbook
 npm install
 npm run dev
