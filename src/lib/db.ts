@@ -83,20 +83,25 @@ export async function listBooks(): Promise<Book[]> {
   return all.filter((b) => !b.deleted).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-export async function createBook(name: string): Promise<Book> {
+export interface BookStyleInput {
+  icon: string;
+  color: number;
+}
+
+export async function createBook(name: string, style: BookStyleInput): Promise<Book> {
   const db = await getDB();
   const now = Date.now();
-  const book: Book = { id: uid(), name, createdAt: now, updatedAt: now };
+  const book: Book = { id: uid(), name, icon: style.icon, color: style.color, createdAt: now, updatedAt: now };
   await db.put("books", book);
   await enqueueSync({ entity: "book", entityId: book.id, op: "put", payload: book });
   return book;
 }
 
-export async function renameBook(id: string, name: string): Promise<void> {
+export async function updateBook(id: string, patch: { name: string } & BookStyleInput): Promise<void> {
   const db = await getDB();
   const book = await db.get("books", id);
   if (!book) return;
-  const updated = { ...book, name, updatedAt: Date.now() };
+  const updated = { ...book, ...patch, updatedAt: Date.now() };
   await db.put("books", updated);
   await enqueueSync({ entity: "book", entityId: id, op: "put", payload: updated });
 }

@@ -5,10 +5,10 @@ import { validateSyncItems } from "../../../server/lib/validate";
 // Last-write-wins is enforced inside SQL (the WHERE on DO UPDATE), so a stale
 // offline edit can never overwrite a newer one, even under concurrent pushes.
 const UPSERT_BOOK = `
-INSERT INTO books (user_id, id, name, created_at, updated_at, deleted, synced_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO books (user_id, id, name, icon, color, created_at, updated_at, deleted, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id, id) DO UPDATE SET
-  name = excluded.name, updated_at = excluded.updated_at,
+  name = excluded.name, icon = excluded.icon, color = excluded.color, updated_at = excluded.updated_at,
   deleted = excluded.deleted, synced_at = excluded.synced_at
 WHERE excluded.updated_at > books.updated_at`;
 
@@ -32,7 +32,7 @@ export const onRequestPost: PagesFunction<Env, string, AuthData> = guard(async (
   const statements = items.map((item) => {
     if (item.entity === "book") {
       const b = item.payload;
-      return env.DB.prepare(UPSERT_BOOK).bind(userId, b.id, b.name, b.createdAt, b.updatedAt, b.deleted ? 1 : 0, now);
+      return env.DB.prepare(UPSERT_BOOK).bind(userId, b.id, b.name, b.icon, b.color, b.createdAt, b.updatedAt, b.deleted ? 1 : 0, now);
     }
     const t = item.payload;
     return env.DB.prepare(UPSERT_TXN).bind(

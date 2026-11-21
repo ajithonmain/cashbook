@@ -51,7 +51,7 @@ Body: `{ "items": [ { "entity": "book" | "transaction", "payload": <record> } ] 
 `200 { "ok": true, "accepted": <n> }`. Each record is upserted with last-write-wins on `updatedAt`; an older
 record than the stored one is accepted but ignored.
 
-Book record: `{ id, name, createdAt, updatedAt, deleted? }` (name 1 to 100 chars).
+Book record: `{ id, name, icon?, color?, createdAt, updatedAt, deleted? }`. `name` is 1 to 100 chars; `icon` is a lowercase key such as `store` (up to 24 chars of `a-z`, `0-9`, `-`, default `book`); `color` is an integer HSL hue from 0 to 359 or `null` (derive from the name). Older clients may omit `icon` and `color`.
 
 Transaction record:
 ```json
@@ -81,6 +81,6 @@ curl -s "$BASE/sync/pull?since=0" -H "authorization: Bearer $TOKEN" | jq '.books
 
 ## Tests
 
-`npm run test:e2e` runs 36 checks covering registration policy, authentication, multi-device sync,
+`npm run test:e2e` runs 40 checks covering registration policy, authentication, multi-device sync,
 last-write-wins, the server-clock cursor, validation, cross-user isolation, session revocation, password
 change, rate limiting, and account deletion. See [DEVELOPMENT.md](DEVELOPMENT.md).

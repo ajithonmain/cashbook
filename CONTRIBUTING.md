@@ -25,7 +25,7 @@ Full-stack local setup (accounts and sync): [docs/DEVELOPMENT.md](docs/DEVELOPME
 1. Branch from `main`.
 2. Keep the change focused. Do not mix refactors with features.
 3. Follow the conventions in AGENTS.md: TypeScript strict, no emojis, inline SVG icons, design tokens not raw
-   hex, accessible labels, 44px touch targets, dark mobile-first UI.
+   hex, accessible labels, usable touch targets (extend the hit area of small controls), compact mobile-first UI that works in both light and dark themes.
 4. Add or update tests. Pure logic gets a unit test in `tests/`. Sync or API behavior gets a check in
    `tests/e2e/api.e2e.mjs`.
 5. Update docs when behavior changes: `docs/API.md` for endpoints, `docs/ARCHITECTURE.md` for design,

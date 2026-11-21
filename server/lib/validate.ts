@@ -3,6 +3,8 @@ import { HttpError } from "./http";
 export interface BookRecord {
   id: string;
   name: string;
+  icon: string;
+  color: number | null;
   createdAt: number;
   updatedAt: number;
   deleted: boolean;
@@ -69,11 +71,26 @@ export function validateDeviceName(v: unknown): string {
   return str(v, "deviceName", 80, { allowEmpty: true }).trim();
 }
 
+function bookIcon(v: unknown): string {
+  if (v === undefined || v === null) return "book";
+  const icon = str(v, "book.icon", 24);
+  if (!/^[a-z0-9-]+$/.test(icon)) bad("book.icon is invalid");
+  return icon;
+}
+
+function bookColor(v: unknown): number | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > 359) bad("book.color must be a hue from 0 to 359");
+  return v;
+}
+
 export function validateBook(v: unknown): BookRecord {
   if (!isObject(v)) bad("book payload must be an object");
   return {
     id: str(v.id, "book.id", 64),
     name: str(v.name, "book.name", 100),
+    icon: bookIcon(v.icon),
+    color: bookColor(v.color),
     createdAt: timestamp(v.createdAt, "book.createdAt"),
     updatedAt: timestamp(v.updatedAt, "book.updatedAt"),
     deleted: v.deleted === true,

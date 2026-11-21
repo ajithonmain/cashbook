@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Book, EntryType, Transaction } from "../lib/types";
+import { getCachedEntries, setCachedEntries } from "../lib/cache";
 import { addTransaction, deleteTransaction, listTransactions, updateTransaction } from "../lib/db";
-import TopBar from "./TopBar";
-import DashboardCard from "./DashboardCard";
-import FilterBar, { type Filters } from "./FilterBar";
+import BookAvatar from "./BookAvatar";
+import Menu, { MenuItem } from "./ui/Menu";
+import SummaryCard from "./ui/SummaryCard";
+import FilterBar, { defaultFilters, type Filters } from "./FilterBar";
 import TransactionList from "./TransactionList";
 import TransactionForm from "./TransactionForm";
 import { showToast } from "../lib/toast";
@@ -14,17 +16,21 @@ interface BookDetailProps {
   onBack: () => void;
 }
 
-const defaultFilters: Filters = { search: "", type: "all", category: "", party: "", paymentMode: "" };
+const NO_ENTRIES: Transaction[] = [];
 
 export default function BookDetail({ book, onBack }: BookDetailProps) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Starts from the last known entries so the screen paints real data immediately; null only on a cold start.
+  const [loaded, setLoaded] = useState<Transaction[] | null>(() => getCachedEntries(book.id) ?? null);
+  const transactions = loaded ?? NO_ENTRIES;
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [formType, setFormType] = useState<EntryType | null>(null);
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
   async function refresh() {
-    setTransactions(await listTransactions(book.id));
+    const next = await listTransactions(book.id);
+    setCachedEntries(book.id, next);
+    setLoaded(next);
   }
 
   const dataVersion = useDataVersion();
@@ -92,57 +98,49 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
 
   return (
     <div className="relative min-h-dvh bg-bg pb-32">
-      <TopBar
-        title={book.name}
-        subtitle={`${transactions.length} ${transactions.length === 1 ? "entry" : "entries"}`}
-        onBack={onBack}
-        right={
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Export options"
-              aria-expanded={menuOpen}
-              className="press flex h-10 w-10 items-center justify-center rounded-full text-fg active:bg-white/5"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-                <div className="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-border/10 bg-surface-2 shadow-card">
-                  <button
-                    onClick={() => {
-                      void import("../lib/export").then((m) => m.exportPDF(book.name, filtered));
-                      setMenuOpen(false);
-                      showToast("PDF exported", { variant: "success" });
-                    }}
-                    className="block w-full px-4 py-3 text-left text-sm font-medium text-fg active:bg-white/5"
-                  >
-                    Export as PDF
-                  </button>
-                  <button
-                    onClick={() => {
-                      void import("../lib/export").then((m) => m.exportCSV(book.name, filtered));
-                      setMenuOpen(false);
-                      showToast("CSV exported", { variant: "success" });
-                    }}
-                    className="block w-full px-4 py-3 text-left text-sm font-medium text-fg active:bg-white/5"
-                  >
-                    Export as Excel (CSV)
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        }
-      />
+      <div className="flex items-center justify-between px-2 pt-[calc(env(safe-area-inset-top)+0.25rem)]">
+        <button
+          onClick={onBack}
+          aria-label="Back to books"
+          className="press flex h-10 w-10 items-center justify-center rounded-full text-fg active:bg-fg/5"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button
+          onClick={(e) => setMenuAnchor(e.currentTarget)}
+          aria-label="Export options"
+          aria-haspopup="menu"
+          className="press flex h-10 w-10 items-center justify-center rounded-full text-fg active:bg-fg/5"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="px-4 pt-1">
+        {loaded ? (
+          <SummaryCard
+            label={
+              <span className="flex items-center gap-1.5">
+                <BookAvatar book={book} size={18} />
+                <span className="truncate">{book.name}</span>
+              </span>
+            }
+            net={netBalance}
+            totalIn={totalIn}
+            totalOut={totalOut}
+          />
+        ) : (
+          <div className="skeleton h-[84px] rounded-2xl" />
+        )}
+      </div>
 
       <FilterBar filters={filters} onChange={setFilters} categories={categories} parties={parties} paymentModes={paymentModes} />
 
-      <DashboardCard netBalance={netBalance} totalIn={totalIn} totalOut={totalOut} />
-
+      {loaded ? (
       <TransactionList
         transactions={filtered}
         runningBalanceEnd={netBalance}
@@ -152,15 +150,22 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
         }}
         onDelete={(t) => void handleDelete(t)}
       />
+      ) : (
+        <div className="mt-4 space-y-px">
+          <div className="skeleton h-12" />
+          <div className="skeleton h-12" />
+          <div className="skeleton h-12" />
+        </div>
+      )}
 
-      <div className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-border/10 bg-bg/85 px-4 pt-3 backdrop-blur-md">
-        <div className="mx-auto flex max-w-md gap-3 pb-3">
+      <div className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-border/10 bg-bg/85 px-4 pt-2 backdrop-blur-md">
+        <div className="mx-auto flex max-w-md gap-2 pb-2">
           <button
             onClick={() => {
               setEditing(null);
               setFormType("in");
             }}
-            className="press flex flex-1 items-center justify-center gap-2 rounded-2xl bg-in py-3.5 text-base font-extrabold text-bg shadow-card"
+            className="press flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-in-solid py-2.5 text-sm font-bold text-on-in shadow-card"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -172,7 +177,7 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
               setEditing(null);
               setFormType("out");
             }}
-            className="press flex flex-1 items-center justify-center gap-2 rounded-2xl bg-out py-3.5 text-base font-extrabold text-bg shadow-card"
+            className="press flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-out-solid py-2.5 text-sm font-bold text-on-out shadow-card"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -181,6 +186,29 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
           </button>
         </div>
       </div>
+
+      {menuAnchor && (
+        <Menu anchor={menuAnchor} onClose={() => setMenuAnchor(null)}>
+          <MenuItem
+            onClick={() => {
+              void import("../lib/export").then((m) => m.exportPDF(book.name, filtered));
+              setMenuAnchor(null);
+              showToast("PDF exported", { variant: "success" });
+            }}
+          >
+            Export as PDF
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              void import("../lib/export").then((m) => m.exportCSV(book.name, filtered));
+              setMenuAnchor(null);
+              showToast("CSV exported", { variant: "success" });
+            }}
+          >
+            Export as Excel (CSV)
+          </MenuItem>
+        </Menu>
+      )}
 
       {formType && (
         <TransactionForm

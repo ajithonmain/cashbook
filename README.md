@@ -7,14 +7,16 @@ account. No central server, no tracking, no third-party scripts.
 
 - Multiple books (Personal, Shop, Trip, ...) with live Net Balance, Total In and Total Out
 - Cash In / Cash Out sheet: amount, category, party, payment mode, remarks, date and time
-- Search by category or party; filter by type, category, party, payment mode
+- Search by category or party; filter by type, category, party, payment mode (in a filter sheet)
 - Swipe an entry to delete, with undo
 - Export the current book as PDF or CSV
 - **Separate accounts**: each user sees only their own books
 - **Multi-device sync**: sign in on your phone, tablet and laptop; changes appear everywhere
 - **Offline first**: everything is saved on the device first, then syncs in the background when online
 - Works without an account too (data stays on the device until you sign in)
-- Installable PWA, dark mobile-first UI with bottom navigation
+- Installable PWA with a compact, header-less mobile UI, slim bottom dock, and Light / Dark / System themes
+- Per-book icon and color (distinct by default, editable) so books are easy to tell apart
+- Install, check for updates, and protect your data from Settings
 
 Stack: React, Vite, Tailwind, IndexedDB (`idb`), Cloudflare Pages + Functions + D1. TypeScript strict.
 

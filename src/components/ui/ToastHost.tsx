@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { subscribe, dismissToast, type ToastItem } from "../../lib/toast";
 
+const TONE = { success: "text-in", error: "text-out", default: "text-fg" } as const;
+
 export default function ToastHost() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -11,20 +13,18 @@ export default function ToastHost() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[1000] flex flex-col items-center gap-2 px-4"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[1000] flex flex-col items-center gap-2 px-4"
     >
       {toasts.map((t) => (
         <div
           key={t.id}
           role="status"
-          className={`pointer-events-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-2xl border border-border/10 px-4 py-3 shadow-card backdrop-blur-md ${
-            t.variant === "success"
-              ? "bg-in/15 text-in"
-              : t.variant === "error"
-              ? "bg-out/15 text-out"
-              : "bg-surface-2/95 text-fg"
-          }`}
-          style={{ animation: "backdrop-in 200ms ease-out" }}
+          className={`pointer-events-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-2xl border border-border/10 bg-surface-2 px-4 py-2.5 shadow-sheet ${TONE[t.variant]}`}
+          style={
+            t.leaving
+              ? { opacity: 0, transform: "translateY(10px) scale(0.98)", transition: "opacity 220ms var(--ease-out), transform 220ms var(--ease-out)" }
+              : { animation: "toast-in 280ms var(--ease-out)" }
+          }
         >
           <span className="text-sm font-medium">{t.message}</span>
           {t.actionLabel && (
@@ -33,7 +33,7 @@ export default function ToastHost() {
                 t.onAction?.();
                 dismissToast(t.id);
               }}
-              className="press flex-none text-sm font-bold text-brand"
+              className="press flex-none text-sm font-bold text-fg"
             >
               {t.actionLabel}
             </button>

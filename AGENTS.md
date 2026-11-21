@@ -72,12 +72,17 @@ Full detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). API reference: [docs/
 src/                      client (React)
   App.tsx                 scope (account) switch, tab/screen routing
   components/             screens (BookList, BookDetail, Reports, Settings) and pieces
-  components/ui/          Sheet, SwipeRow, ConfirmDialog, ToastHost, Screen, SyncBadge
+  components/ui/          Sheet, SwipeRow, ConfirmDialog, ToastHost, Screen, SyncBadge, SummaryCard, ListGroup,
+                          UpdateBanner
+  components/settings/    ThemeRow, AppRows (install, version and updates, storage)
+  components/BookAvatar.tsx, BookEditSheet.tsx   book icon and color
   components/account/     AuthForm, AccountPanel (sessions, password, delete account)
   lib/db.ts               IndexedDB access, per-user database "scope", sync queue
   lib/sync.ts             push/pull engine, status store, useDataVersion
   lib/queue.ts            pure queue coalescing (unit tested)
   lib/auth.ts, api.ts     auth state in localStorage, fetch wrapper
+  lib/theme.ts, pwa.ts    theme preference; install prompt, update checks, storage persistence
+  lib/bookStyle.ts        book icon keys, name-derived hue, icon suggestion (unit tested)
   lib/account.ts          sign in/up/out, guest-data import, account deletion
 functions/api/            Cloudflare Pages Functions routes (one file per endpoint)
   _middleware.ts          authenticates every /api/* request except health/login/register
@@ -130,9 +135,14 @@ Server and security
 - No emojis anywhere in code, comments, commits, or docs.
 - Comments only for non-obvious WHY (a constraint, an invariant, a workaround). No narration.
 - Icons are inline SVG only. No icon libraries. One stroke style per context.
-- UI is dark-only, mobile-first, built on CSS variables in `src/index.css` mapped in `tailwind.config.js`
-  (`bg`, `surface`, `surface-2`, `fg`, `fg-muted`, `brand`, `in`, `out`). Use tokens, not raw hex.
-- Touch targets at least 44px. Inputs use 16px+ text (prevents iOS zoom). Every input has a `<label>`
+- UI is mobile-first with Light, Dark and System themes. Colors are CSS variables in `src/index.css` mapped in
+  `tailwind.config.js` (`bg`, `surface`, `surface-2`, `fg`, `fg-muted`, `brand`, `in`, `out`, and the `*-solid` /
+  `on-*` pairs). Use tokens, never raw hex, and never the Tailwind `dark:` variant (the theme is a
+  `data-theme` attribute). Filled buttons pair `bg-X-solid` with `text-on-X`; never hand-write white text on a fill.
+  Full rules and measured contrast: `docs/DESIGN.md`.
+- The UI is intentionally dense and header-less (see `docs/DESIGN.md` Density). Do not add page titles or
+  subtitles to top-level tabs. Visible controls may be small, but extend the hit area to about 44px
+  (`PillButton` shows how). Inputs use 16px text (prevents iOS zoom); never disable pinch zoom. Every input has a `<label>`
   (`htmlFor`). Icon-only buttons need `aria-label`. Respect `prefers-reduced-motion` (already global).
 - Money is displayed with `formatAmount` and tabular numerals (`tabular` class).
 - Use `Sheet` for forms, `ConfirmDialog` for destructive confirmation, `showToast` for feedback. Prefer
@@ -141,6 +151,12 @@ Server and security
 - The unlayered `.safe-bottom` / `.safe-top` classes in `index.css` override Tailwind padding utilities
   (this caused a real bug with toasts). Do not combine them with `pb-*` / `pt-*` on the same element.
 - Heavy libraries (jsPDF and friends) are loaded with dynamic `import()` at the point of use.
+- Motion: follow `docs/DESIGN.md` Motion. Use `var(--ease-out)` / `var(--ease-in)`, animate only transform and opacity,
+  give every entering surface an exit, and never unmount the three tabs (they stay mounted so switching is instant).
+  Dropdowns must use `ui/Menu` (portal), never an absolutely positioned div inside a card with `overflow-hidden`.
+  Overlays that need to sit above the dock use the layer order in `Sheet.tsx`.
+- Do not focus inputs with `autoFocus` inside sheets; focus after the slide-in finishes (see `BookEditSheet`).
+- Book colors: Auto must stay collision-free (`pickAutoHue`) and the resulting hue is stored.
 
 ## Common tasks
 
@@ -158,7 +174,10 @@ Add an API endpoint
 3. Document it in `docs/API.md`; add e2e coverage.
 
 Change categories or payment modes: `src/lib/types.ts` constants.
-Change theme: CSS variables in `src/index.css`.
+Change theme colors: CSS variables in `src/index.css` (both the light and `data-theme="dark"` blocks), then re-check
+contrast and update `docs/DESIGN.md`.
+Add a book icon: add the key to `ICON_KEYS` in `src/lib/bookStyle.ts` and its SVG to `ICONS` in
+`src/components/BookAvatar.tsx`. Keys are stored in synced data, so never rename or remove one.
 
 ## Verifying
 

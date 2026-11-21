@@ -6,3 +6,5 @@ dist
 .dev.vars
 *.tsbuildinfo
 .claude/
+.playwright-mcp/
+*.png.tmp

@@ -23,7 +23,7 @@ export default function SyncBadge() {
       ? "bg-in/15 text-in"
       : status === "error" || status === "expired"
       ? "bg-out/15 text-out"
-      : "bg-white/10 text-fg-muted";
+      : "bg-fg/10 text-fg-muted";
 
   return (
     <span role="status" className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${tone}`}>

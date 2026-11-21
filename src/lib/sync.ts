@@ -159,6 +159,8 @@ export function initSync(): void {
   started = true;
   let debounce: ReturnType<typeof setTimeout> | undefined;
   window.addEventListener(QUEUED_EVENT, () => {
+    // Every mounted screen re-reads local data, so tabs that stay mounted never show stale numbers.
+    bumpData();
     void refreshPending();
     clearTimeout(debounce);
     debounce = setTimeout(() => void runSync(), 800);

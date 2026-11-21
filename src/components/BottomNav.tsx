@@ -5,56 +5,59 @@ interface BottomNavProps {
   onChange: (tab: TabKey) => void;
 }
 
-const TABS: { key: TabKey; label: string; icon: (active: boolean) => JSX.Element }[] = [
+const TABS: { key: TabKey; label: string; icon: JSX.Element }[] = [
   {
     key: "books",
     label: "Books",
-    icon: (active) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M6 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2Z"
-          fill={active ? "currentColor" : "none"}
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
       </svg>
     ),
   },
   {
     key: "reports",
     label: "Reports",
-    icon: (active) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.8" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0} />
-        <path d="M8 15l2.5-4 2.5 3 3-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
       </svg>
     ),
   },
   {
     key: "settings",
     label: "Settings",
-    icon: (active) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.25 : 0} />
-        <path
-          d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-1 1.46V21a2 2 0 1 1-4 0v-.09a1.6 1.6 0 0 0-1-1.47 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .32-1.77 1.6 1.6 0 0 0-1.46-1H3a2 2 0 1 1 0-4h.09a1.6 1.6 0 0 0 1.47-1 1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32H9a1.6 1.6 0 0 0 1-1.46V3a2 2 0 1 1 4 0v.09a1.6 1.6 0 0 0 1 1.46 1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77V9a1.6 1.6 0 0 0 1.46 1H21a2 2 0 1 1 0 4h-.09a1.6 1.6 0 0 0-1.46 1Z"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-        />
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7h9M17 7h3M4 17h3M11 17h9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+        <circle cx="15" cy="7" r="2" stroke="currentColor" strokeWidth="1.9" />
+        <circle cx="9" cy="17" r="2" stroke="currentColor" strokeWidth="1.9" />
       </svg>
     ),
   },
 ];
 
+/**
+ * Slim dock. Three equal cells never change size, a single pill slides between them, and the active
+ * label expands in place, so switching tabs moves nothing else on the bar.
+ */
 export default function BottomNav({ active, onChange }: BottomNavProps) {
+  const index = TABS.findIndex((t) => t.key === active);
+
   return (
-    <nav
-      className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border/10 bg-surface/90 backdrop-blur-md"
-      aria-label="Primary"
-    >
-      <div className="mx-auto flex max-w-md items-stretch justify-around">
+    <nav className="fixed inset-x-0 bottom-0 z-40 bg-dock pb-[env(safe-area-inset-bottom)]" aria-label="Primary">
+      <div className="relative mx-auto grid max-w-md grid-cols-3 px-2 py-1">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-1 left-2 w-[calc((100%-1rem)/3)] px-2 py-1.5 will-change-transform"
+          style={{
+            transform: `translateX(${index * 100}%)`,
+            transition: "transform 380ms var(--ease-out)",
+          }}
+        >
+          <span className="block h-full rounded-full bg-dock-active" />
+        </span>
+
         {TABS.map((tab) => {
           const isActive = active === tab.key;
           return (
@@ -63,12 +66,21 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
               onClick={() => onChange(tab.key)}
               aria-label={tab.label}
               aria-current={isActive ? "page" : undefined}
-              className={`press flex min-w-[64px] flex-1 flex-col items-center gap-1 py-2.5 ${
-                isActive ? "text-brand" : "text-fg-muted"
+              className={`press relative z-10 flex h-12 items-center justify-center transition-colors duration-300 ${
+                isActive ? "text-dock-active-text" : "text-dock-text"
               }`}
             >
-              {tab.icon(isActive)}
-              <span className={`text-[11px] ${isActive ? "font-semibold" : "font-medium"}`}>{tab.label}</span>
+              {tab.icon}
+              <span
+                className="grid transition-[grid-template-columns,margin,opacity] duration-300 ease-out"
+                style={{
+                  gridTemplateColumns: isActive ? "1fr" : "0fr",
+                  marginLeft: isActive ? 8 : 0,
+                  opacity: isActive ? 1 : 0,
+                }}
+              >
+                <span className="min-w-0 overflow-hidden whitespace-nowrap text-[13px] font-semibold">{tab.label}</span>
+              </span>
             </button>
           );
         })}

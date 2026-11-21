@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HttpError } from "../server/lib/http";
 import {
   MAX_SYNC_ITEMS,
+  validateBook,
   validateEmail,
   validatePassword,
   validateSyncItems,
@@ -61,6 +62,20 @@ describe("transaction validation", () => {
   });
   it("rejects oversized text", () => {
     expect(status(() => validateTransaction({ ...txn, remarks: "x".repeat(501) }))).toBe(400);
+  });
+});
+
+describe("book style validation", () => {
+  const book = { id: "b1", name: "Shop", createdAt: 1, updatedAt: 2 };
+  it("defaults icon to book and color to null for older clients", () => {
+    expect(validateBook(book)).toMatchObject({ icon: "book", color: null });
+  });
+  it("accepts a valid icon and hue", () => {
+    expect(validateBook({ ...book, icon: "store", color: 222 })).toMatchObject({ icon: "store", color: 222 });
+  });
+  it("rejects bad icons and hues", () => {
+    for (const icon of ["Store", "has space", "x".repeat(25), 5]) expect(status(() => validateBook({ ...book, icon }))).toBe(400);
+    for (const color of [-1, 360, 12.5, "red"]) expect(status(() => validateBook({ ...book, color }))).toBe(400);
   });
 });
 

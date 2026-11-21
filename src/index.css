@@ -2,22 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg: 11 13 18;
-  --surface: 21 23 30;
-  --surface-2: 28 31 41;
+/* Palette adapted from PocketDays: neutral monochrome, hairline borders, one near-black (light) or
+   near-white (dark) accent. Colors are space-separated RGB channels so Tailwind opacity modifiers work.
+   Light is the default; theme-init.js and lib/theme.ts set data-theme="dark" on <html>. */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: 245 245 247;
+  --surface: 255 255 255;
+  --surface-2: 241 241 244;
+  --border: 23 29 35;
+  --fg: 23 29 35;
+  --fg-muted: 101 107 114;
+  --brand: 23 29 35;
+  --brand-solid: 23 29 35;
+  --on-brand: 255 255 255;
+  --in: 46 125 82;
+  --in-solid: 46 125 82;
+  --on-in: 255 255 255;
+  --out: 180 63 66;
+  --out-solid: 171 59 65;
+  --on-out: 255 255 255;
+  --dock: 23 29 35;
+  --on-dock: 198 203 206;
+  --dock-active: 255 255 255;
+  --on-dock-active: 23 29 35;
+  --shadow-card: 0 1px 3px rgb(20 24 40 / 0.07);
+  --shadow-sheet: 0 -8px 32px rgb(10 14 16 / 0.18);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: 13 15 16;
+  --surface: 23 25 27;
+  --surface-2: 28 31 33;
   --border: 255 255 255;
-  --fg: 244 245 247;
-  --fg-muted: 154 160 172;
-  --brand: 125 122 255;
-  --brand-dark: 94 90 230;
-  --brand-light: 125 122 255;
-  --in: 47 209 123;
-  --out: 255 92 92;
+  --fg: 242 243 243;
+  --fg-muted: 140 145 148;
+  --brand: 242 243 243;
+  --brand-solid: 242 243 243;
+  --on-brand: 17 20 22;
+  --in: 134 212 168;
+  --in-solid: 159 217 182;
+  --on-in: 15 42 27;
+  --out: 246 168 168;
+  --out-solid: 240 175 165;
+  --on-out: 50 22 18;
+  --dock: 29 33 37;
+  --on-dock: 140 145 148;
+  --dock-active: 242 243 243;
+  --on-dock-active: 17 20 22;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25);
+  --shadow-sheet: 0 -8px 32px rgb(0 0 0 / 0.55);
 }
 
 html, body, #root {
   height: 100%;
+}
+
+html {
+  scrollbar-gutter: stable;
+  /* Stripe-style easing: fast start, long soft landing. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
 }
 
 body {
@@ -33,13 +80,60 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Per-book colors: only the hue (--h) is stored; lightness is set per theme so every hue stays readable. */
+.book-avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: hsl(var(--h) 65% 48% / 0.16);
+  color: hsl(var(--h) 60% 32%);
+}
+.book-swatch {
+  background: hsl(var(--h) 65% 50%);
+}
+:root[data-theme="dark"] .book-avatar {
+  background: hsl(var(--h) 70% 62% / 0.2);
+  color: hsl(var(--h) 80% 76%);
+}
+:root[data-theme="dark"] .book-swatch {
+  background: hsl(var(--h) 70% 62%);
+}
+
+.hue-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  width: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(to right, hsl(0 65% 52%), hsl(60 65% 52%), hsl(120 65% 52%), hsl(180 65% 52%), hsl(240 65% 52%), hsl(300 65% 52%), hsl(360 65% 52%));
+}
+.hue-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 2px solid rgb(var(--fg));
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+}
+.hue-slider::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 2px solid rgb(var(--fg));
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
 .pill {
-  @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-border/10 bg-surface-2 px-3 py-2 text-sm text-fg shadow-none;
-  min-height: 36px;
+  @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-border/10 bg-surface-2 px-4 py-2 text-base text-fg shadow-none;
+  min-height: 44px;
 }
 
 .pill-scroll {
@@ -58,11 +152,12 @@ body {
 }
 
 .press {
-  transition: transform 150ms var(--tw-ease, ease-out), opacity 150ms ease-out, background-color 150ms ease-out;
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out), background-color 160ms var(--ease-out);
 }
 .press:active {
   transform: scale(0.97);
   opacity: 0.9;
+  transition-duration: 60ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -78,22 +173,38 @@ body {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
-@keyframes sheet-out {
-  from { transform: translateY(0); }
-  to { transform: translateY(100%); }
-}
 @keyframes backdrop-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-@keyframes backdrop-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+@keyframes tab-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-@keyframes screen-in {
-  from { opacity: 0; transform: translateX(16px); }
-  to { opacity: 1; transform: translateX(0); }
+@keyframes push-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tab-pane { animation: tab-in 200ms var(--ease-out); }
+.pop { transform-origin: top right; animation: pop-in 150ms var(--ease-out); }
+
+/* Briefly added to <html> when the theme changes so colors cross-fade instead of snapping. */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 280ms ease, border-color 280ms ease, color 280ms ease, fill 280ms ease, stroke 280ms ease !important;
+}
+
 @keyframes shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }

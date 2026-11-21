@@ -1,32 +1,62 @@
+import { useEffect, useState } from "react";
+import { fetchSignupMode, type SignupMode } from "../lib/account";
 import { useAuth } from "../lib/auth";
-import AccountPanel from "./account/AccountPanel";
+import AccountRows from "./account/AccountPanel";
 import AuthForm from "./account/AuthForm";
+import { InstallRow, StorageRow, UpdateRow } from "./settings/AppRows";
+import ThemeRow from "./settings/ThemeRow";
+import { Group, PillButton, Row } from "./ui/ListGroup";
+import Sheet from "./ui/Sheet";
 
 export default function Settings() {
   const auth = useAuth();
+  const [signup, setSignup] = useState<SignupMode | null | undefined>(undefined);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  useEffect(() => {
+    if (!auth || auth.expired) void fetchSignupMode().then(setSignup);
+  }, [auth]);
+
+  useEffect(() => {
+    if (auth && !auth.expired) setAuthOpen(false);
+  }, [auth]);
 
   return (
-    <div className="min-h-dvh bg-bg pb-28">
-      <div className="safe-top px-4 pb-2 pt-5">
-        <h1 className="text-2xl font-extrabold tracking-tight text-fg">Settings</h1>
-        <p className="text-sm text-fg-muted">Account and sync</p>
-      </div>
+    <div className="min-h-dvh bg-bg px-4 pb-20 pt-[calc(env(safe-area-inset-top)+1rem)]">
+      <section className="mb-4">
+        <h2 className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-[0.6px] text-fg-muted">Appearance</h2>
+        <ThemeRow />
+      </section>
 
-      <div className="space-y-4 px-4 pt-2">
-        {auth && !auth.expired && <AccountPanel auth={auth} />}
-        {auth?.expired && <AuthForm expiredEmail={auth.user.email} />}
-        {!auth && <AuthForm />}
+      <Group label="Sync">
+        {auth && !auth.expired ? (
+          <AccountRows auth={auth} />
+        ) : signup === null ? (
+          <Row title="Sync" sub="Not set up on this server" />
+        ) : (
+          <Row
+            title={auth?.expired ? "Session ended" : "Sign in"}
+            sub={auth?.expired ? auth.user.email : "Sync your books across devices"}
+            right={
+              <PillButton solid disabled={signup === undefined} onClick={() => setAuthOpen(true)}>
+                Sign in
+              </PillButton>
+            }
+          />
+        )}
+      </Group>
 
-        <div className="rounded-2xl border border-border/10 bg-surface p-4 shadow-card">
-          <p className="text-sm font-bold text-fg">Your data</p>
-          <p className="mt-1 text-xs text-fg-muted">
-            CashBook saves everything on this device first, so it works offline. When you are signed in, changes
-            upload in the background and appear on your other devices.
-          </p>
-        </div>
+      <Group label="App">
+        <InstallRow />
+        <UpdateRow />
+        <StorageRow />
+      </Group>
 
-        <p className="px-1 text-center text-xs text-fg-muted">CashBook is open source (MIT).</p>
-      </div>
+      {authOpen && signup && (
+        <Sheet onClose={() => setAuthOpen(false)}>
+          <AuthForm signup={signup} expiredEmail={auth?.expired ? auth.user.email : undefined} />
+        </Sheet>
+      )}
     </div>
   );
 }

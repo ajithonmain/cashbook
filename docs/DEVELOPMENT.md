@@ -35,8 +35,8 @@ Notes:
 | --- | --- |
 | `npm run typecheck` | client type check |
 | `npx tsc -p functions/tsconfig.json` | server type check (`functions/` and `server/`) |
-| `npm test` | vitest unit tests: crypto, validation, queue coalescing |
-| `npm run test:e2e` | 36 API checks against the running local server on port 8788 |
+| `npm test` | vitest unit tests: crypto, validation, queue coalescing, book styling (28 tests) |
+| `npm run test:e2e` | 40 API checks against the running local server on port 8788 |
 
 `test:e2e` registers throwaway users. Only run it against the local database or another disposable one. Use
 `BASE_URL` and `INVITE_CODE` environment variables to target a different server.

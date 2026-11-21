@@ -50,14 +50,19 @@ export default function SwipeRow({ children, onDelete, deleteLabel = "Delete" }:
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-y-0 right-0 flex w-[88px] items-stretch">
+      <div
+        className="absolute inset-y-0 right-0 flex w-[88px] items-stretch"
+        // Fully hidden at rest (opacity change delayed until the close animation ends) so sub-pixel gaps never show a sliver of red.
+        style={{ opacity: x === 0 ? 0 : 1, transition: x === 0 ? "opacity 0s linear 240ms" : "none" }}
+        aria-hidden={x === 0}
+      >
         <button
           onClick={() => {
             onDelete();
             setX(0);
           }}
           aria-label={deleteLabel}
-          className="press flex w-full items-center justify-center bg-out text-xs font-bold text-bg"
+          className="press flex w-full items-center justify-center bg-out-solid text-xs font-bold text-on-out"
         >
           {deleteLabel}
         </button>

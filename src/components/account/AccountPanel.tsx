@@ -10,24 +10,16 @@ import {
   type SessionInfo,
 } from "../../lib/account";
 import { ApiError } from "../../lib/api";
-import { runSync, useSyncState, type SyncStatus } from "../../lib/sync";
+import { runSync, useSyncState } from "../../lib/sync";
 import { showToast } from "../../lib/toast";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import { Chevron, PillButton, Row } from "../ui/ListGroup";
 import Sheet from "../ui/Sheet";
 
 const inputCls =
-  "w-full rounded-xl border border-border/10 bg-surface-2 px-3.5 py-3 text-base text-fg outline-none placeholder:text-fg-muted focus:border-brand focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-xl border border-border/10 bg-surface-2 px-3 py-2.5 text-base text-fg outline-none placeholder:text-fg-muted focus:border-brand focus:ring-2 focus:ring-brand/30";
 const labelCls = "mb-1.5 block text-xs font-semibold text-fg-muted";
-const rowCls = "press flex w-full items-center justify-between px-4 py-3.5 text-left text-sm font-medium text-fg";
-
-const STATUS_LABEL: Record<SyncStatus, string> = {
-  local: "Not signed in",
-  idle: "Up to date",
-  syncing: "Syncing...",
-  offline: "Offline. Changes will sync when you reconnect.",
-  error: "Sync problem",
-  expired: "Session ended. Sign in again.",
-};
+const primaryBtn = "press w-full rounded-xl bg-brand-solid py-2.5 text-sm font-bold text-on-brand disabled:opacity-60";
 
 function relativeTime(ts: number): string {
   const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
@@ -56,8 +48,7 @@ function DevicesSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet onClose={onClose}>
       <div className="px-5 pb-6 pt-1">
-        <h2 className="mb-1 text-lg font-extrabold text-fg">Signed-in devices</h2>
-        <p className="mb-4 text-xs text-fg-muted">Remove a device to sign it out remotely.</p>
+        <h2 className="mb-3 text-base font-bold text-fg">Signed-in devices</h2>
         {error && <p className="text-sm text-out">{error}</p>}
         {sessions === null && !error && <div className="skeleton h-16 rounded-xl" />}
         <ul className="divide-y divide-border/10 overflow-hidden rounded-xl border border-border/10 bg-surface-2">
@@ -66,21 +57,21 @@ function DevicesSheet({ onClose }: { onClose: () => void }) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-fg">
                   {s.deviceName || "Unknown device"}
-                  {s.current && <span className="ml-2 rounded-full bg-in/15 px-2 py-0.5 text-[10px] font-bold text-in">This device</span>}
+                  {s.current && <span className="ml-2 rounded-full bg-fg/10 px-2 py-0.5 text-[10px] font-bold text-fg">This device</span>}
                 </p>
                 <p className="text-xs text-fg-muted">Active {relativeTime(s.lastSeenAt)}</p>
               </div>
               {!s.current && (
-                <button
+                <PillButton
+                  danger
                   onClick={async () => {
                     await revokeSession(s.id);
                     showToast("Device signed out", { variant: "success" });
                     await load();
                   }}
-                  className="press flex-none rounded-lg px-3 py-2 text-xs font-bold text-out"
                 >
                   Remove
-                </button>
+                </PillButton>
               )}
             </li>
           ))}
@@ -114,7 +105,7 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet onClose={onClose}>
       <form onSubmit={submit} className="space-y-3 px-5 pb-6 pt-1">
-        <h2 className="text-lg font-extrabold text-fg">Change password</h2>
+        <h2 className="text-base font-bold text-fg">Change password</h2>
         <div>
           <label htmlFor="pw-current" className={labelCls}>
             Current password
@@ -132,7 +123,7 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
             {error}
           </p>
         )}
-        <button type="submit" disabled={busy} className="press w-full rounded-xl bg-brand py-3.5 text-base font-bold text-bg disabled:opacity-60">
+        <button type="submit" disabled={busy} className={primaryBtn}>
           {busy ? "Saving..." : "Update password"}
         </button>
       </form>
@@ -161,11 +152,8 @@ function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet onClose={onClose}>
       <form onSubmit={submit} className="space-y-3 px-5 pb-6 pt-1">
-        <h2 className="text-lg font-extrabold text-out">Delete account</h2>
-        <p className="text-sm text-fg-muted">
-          This permanently deletes your account and every book and entry stored on the server, and clears this
-          device. It cannot be undone.
-        </p>
+        <h2 className="text-base font-bold text-out">Delete account</h2>
+        <p className="text-sm text-fg-muted">Permanently deletes your account and all books stored on the server, and clears this device.</p>
         <div>
           <label htmlFor="del-password" className={labelCls}>
             Confirm with your password
@@ -177,7 +165,7 @@ function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
             {error}
           </p>
         )}
-        <button type="submit" disabled={busy} className="press w-full rounded-xl bg-out py-3.5 text-base font-bold text-bg disabled:opacity-60">
+        <button type="submit" disabled={busy} className="press w-full rounded-xl bg-out-solid py-2.5 text-sm font-bold text-on-out disabled:opacity-60">
           {busy ? "Deleting..." : "Delete everything"}
         </button>
       </form>
@@ -185,55 +173,60 @@ function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function AccountPanel({ auth }: { auth: AuthState }) {
+function syncLine(status: string, pending: number, error: string | null): string {
+  const base =
+    status === "idle"
+      ? "Up to date"
+      : status === "syncing"
+      ? "Syncing..."
+      : status === "offline"
+      ? "Offline"
+      : status === "expired"
+      ? "Session ended"
+      : error ?? "Sync problem";
+  return pending > 0 ? `${base} · ${pending} pending` : base;
+}
+
+/** Rows for the signed-in state, to be placed inside a settings Group. */
+export default function AccountRows({ auth }: { auth: AuthState }) {
   const sync = useSyncState();
-  const [sheet, setSheet] = useState<"devices" | "password" | "delete" | null>(null);
+  const [sheet, setSheet] = useState<"menu" | "devices" | "password" | "delete" | null>(null);
   const [signOutPending, setSignOutPending] = useState<number | null>(null);
 
   async function startSignOut() {
+    setSheet(null);
     const pending = await pendingBeforeSignOut();
     if (pending > 0) setSignOutPending(pending);
     else await signOut();
   }
 
-  const dot =
-    sync.status === "idle" ? "bg-in" : sync.status === "syncing" ? "bg-brand" : sync.status === "error" || sync.status === "expired" ? "bg-out" : "bg-fg-muted";
-
   return (
     <>
-      <div className="overflow-hidden rounded-2xl border border-border/10 bg-surface shadow-card">
-        <div className="px-4 py-4">
-          <p className="text-xs font-semibold text-fg-muted">Signed in as</p>
-          <p className="truncate text-base font-bold text-fg">{auth.user.email}</p>
-          <div className="mt-3 flex items-center gap-2 text-sm text-fg-muted">
-            <span className={`h-2 w-2 flex-none rounded-full ${dot}`} aria-hidden="true" />
-            <span>{STATUS_LABEL[sync.status]}</span>
-          </div>
-          <p className="mt-1 text-xs text-fg-muted">
-            {sync.pending > 0 ? `${sync.pending} change${sync.pending === 1 ? "" : "s"} waiting to upload. ` : ""}
-            {sync.lastSyncAt ? `Last synced ${relativeTime(sync.lastSyncAt)}.` : ""}
-          </p>
-          {sync.error && <p className="mt-1 text-xs text-out">{sync.error}</p>}
-        </div>
-        <div className="divide-y divide-border/10 border-t border-border/10">
-          <button onClick={() => void runSync()} className={rowCls}>
+      <Row
+        title={auth.user.email}
+        sub={syncLine(sync.status, sync.pending, sync.error)}
+        right={
+          <PillButton disabled={sync.status === "syncing"} onClick={() => void runSync()}>
             Sync now
-          </button>
-          <button onClick={() => setSheet("devices")} className={rowCls}>
-            Signed-in devices
-          </button>
-          <button onClick={() => setSheet("password")} className={rowCls}>
-            Change password
-          </button>
-          <button onClick={() => void startSignOut()} className={rowCls}>
-            Sign out
-          </button>
-          <button onClick={() => setSheet("delete")} className={`${rowCls} text-out`}>
-            Delete account
-          </button>
-        </div>
-      </div>
+          </PillButton>
+        }
+      />
+      <Row title="Account" sub="Devices, password, sign out" right={<PillButton onClick={() => setSheet("menu")}>Manage</PillButton>} />
 
+      {sheet === "menu" && (
+        <Sheet onClose={() => setSheet(null)}>
+          <div className="px-5 pb-6 pt-1">
+            <h2 className="mb-1 text-base font-bold text-fg">Account</h2>
+            <p className="mb-3 truncate text-sm text-fg-muted">{auth.user.email}</p>
+            <div className="divide-y divide-border/10 overflow-hidden rounded-xl border border-border/10 bg-surface-2 px-4">
+              <Row title="Signed-in devices" right={<Chevron />} onClick={() => setSheet("devices")} />
+              <Row title="Change password" right={<Chevron />} onClick={() => setSheet("password")} />
+              <Row title="Sign out" onClick={() => void startSignOut()} />
+              <Row title="Delete account" danger onClick={() => setSheet("delete")} />
+            </div>
+          </div>
+        </Sheet>
+      )}
       {sheet === "devices" && <DevicesSheet onClose={() => setSheet(null)} />}
       {sheet === "password" && <PasswordSheet onClose={() => setSheet(null)} />}
       {sheet === "delete" && <DeleteAccountSheet onClose={() => setSheet(null)} />}
@@ -241,7 +234,7 @@ export default function AccountPanel({ auth }: { auth: AuthState }) {
       {signOutPending !== null && (
         <ConfirmDialog
           title="Sign out with unsynced changes?"
-          description={`${signOutPending} change${signOutPending === 1 ? " has" : "s have"} not reached the server yet and will be lost if you sign out now. Connect to the internet and sync first to keep them.`}
+          description={`${signOutPending} change${signOutPending === 1 ? " has" : "s have"} not reached the server and will be lost. Connect and sync first to keep them.`}
           confirmLabel="Sign out anyway"
           onCancel={() => setSignOutPending(null)}
           onConfirm={() => {

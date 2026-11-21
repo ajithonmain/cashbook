@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { EntryType, Transaction } from "../lib/types";
 import { CATEGORIES_IN, CATEGORIES_OUT, PAYMENT_MODES } from "../lib/types";
 import { toDatetimeLocalValue } from "../lib/format";
@@ -20,7 +20,7 @@ interface TransactionFormProps {
 }
 
 const inputCls =
-  "w-full rounded-xl border border-border/10 bg-surface-2 px-3.5 py-3 text-base text-fg outline-none placeholder:text-fg-muted focus:border-brand focus:ring-2 focus:ring-brand/30";
+  "w-full rounded-xl border border-border/10 bg-surface-2 px-3 py-2.5 text-base text-fg outline-none placeholder:text-fg-muted focus:border-brand focus:ring-2 focus:ring-brand/30";
 const labelCls = "mb-1.5 block text-xs font-semibold text-fg-muted";
 
 export default function TransactionForm({ type, initial, onClose, onSubmit, onDelete }: TransactionFormProps) {
@@ -32,6 +32,13 @@ export default function TransactionForm({ type, initial, onClose, onSubmit, onDe
   const [remarks, setRemarks] = useState(initial?.remarks ?? "");
   const [occurredAt, setOccurredAt] = useState(toDatetimeLocalValue(initial?.occurredAt ?? Date.now()));
   const [error, setError] = useState("");
+  const amountRef = useRef<HTMLInputElement>(null);
+
+  // Focus after the sheet has finished sliding in; focusing during the animation makes mobile browsers jump.
+  useEffect(() => {
+    const t = window.setTimeout(() => amountRef.current?.focus({ preventScroll: true }), 380);
+    return () => window.clearTimeout(t);
+  }, []);
 
   function submit() {
     const amt = Number(amount);
@@ -55,7 +62,7 @@ export default function TransactionForm({ type, initial, onClose, onSubmit, onDe
     <Sheet onClose={onClose}>
       <div className="space-y-4 px-5 pb-5 pt-1">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-extrabold text-fg">
+          <h2 className="text-base font-bold text-fg">
             {initial ? "Edit entry" : isIn ? "Cash In" : "Cash Out"}
           </h2>
           <span
@@ -78,10 +85,10 @@ export default function TransactionForm({ type, initial, onClose, onSubmit, onDe
               setError("");
             }}
             placeholder="0"
-            autoFocus
+            ref={amountRef}
             aria-invalid={Boolean(error)}
             aria-describedby={error ? "txn-amount-error" : undefined}
-            className={`${inputCls} tabular text-3xl font-extrabold ${isIn ? "text-in" : "text-out"}`}
+            className={`${inputCls} tabular text-2xl font-bold ${isIn ? "text-in" : "text-out"}`}
           />
           {error && (
             <p id="txn-amount-error" className="mt-1.5 text-sm text-out">
@@ -140,7 +147,7 @@ export default function TransactionForm({ type, initial, onClose, onSubmit, onDe
 
         <button
           onClick={submit}
-          className={`press w-full rounded-xl py-3.5 text-base font-extrabold text-bg ${isIn ? "bg-in" : "bg-out"}`}
+          className={`press w-full rounded-xl py-3.5 text-base font-extrabold text-on-in ${isIn ? "bg-in-solid" : "bg-out-solid"}`}
         >
           {initial ? "Save changes" : isIn ? "Save Cash In" : "Save Cash Out"}
         </button>

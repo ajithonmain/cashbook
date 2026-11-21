@@ -97,6 +97,15 @@ check("negative amount rejected -> 400", r.status === 400);
 r = await call("/sync/push", { method: "POST", token: tokenA1, body: { items: [{ entity: "user", payload: {} }] } });
 check("unknown entity rejected -> 400", r.status === 400);
 
+// Book icon and color round-trip
+r = await call("/sync/push", { method: "POST", token: tokenA1, body: { items: [{ entity: "book", payload: { ...book("b-styled", "Trip to Goa", now + 10), icon: "plane", color: 222 } }] } });
+check("push book with icon and color", r.status === 200, JSON.stringify(r));
+r = await call("/sync/pull?since=0", { token: tokenA1 });
+check("icon and color come back on pull", r.data.books.find((b) => b.id === "b-styled")?.icon === "plane" && r.data.books.find((b) => b.id === "b-styled")?.color === 222);
+check("older books default to icon book and null color", r.data.books.find((b) => b.id === "b1")?.icon === "book" && r.data.books.find((b) => b.id === "b1")?.color === null);
+r = await call("/sync/push", { method: "POST", token: tokenA1, body: { items: [{ entity: "book", payload: { ...book("b-bad", "X", now), color: 999 } }] } });
+check("out-of-range color rejected -> 400", r.status === 400);
+
 // Isolation between users
 r = await call("/auth/register", { method: "POST", body: { email: emailB, password: "password456", inviteCode: INVITE } });
 const tokenB = r.data.token;

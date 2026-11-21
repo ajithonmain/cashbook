@@ -6,6 +6,8 @@ const PAGE_SIZE = 500;
 interface BookRow {
   id: string;
   name: string;
+  icon: string;
+  color: number | null;
   created_at: number;
   updated_at: number;
   deleted: number;
@@ -66,6 +68,8 @@ export const onRequestGet: PagesFunction<Env, string, AuthData> = guard(async ({
     books: books.map((r) => ({
       id: r.id,
       name: r.name,
+      icon: r.icon,
+      color: r.color,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       deleted: r.deleted === 1,

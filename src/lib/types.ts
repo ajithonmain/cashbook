@@ -3,6 +3,10 @@ export type EntryType = "in" | "out";
 export interface Book {
   id: string;
   name: string;
+  /** Key from ICON_KEYS; books created before icons existed have none. */
+  icon?: string;
+  /** HSL hue 0-359; null or missing means derive from the name. */
+  color?: number | null;
   createdAt: number;
   updatedAt: number;
   deleted?: boolean;
