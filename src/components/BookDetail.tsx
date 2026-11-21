@@ -6,8 +6,8 @@ import DashboardCard from "./DashboardCard";
 import FilterBar, { type Filters } from "./FilterBar";
 import TransactionList from "./TransactionList";
 import TransactionForm from "./TransactionForm";
-import { exportCSV, exportPDF } from "../lib/export";
 import { showToast } from "../lib/toast";
+import { useDataVersion } from "../lib/sync";
 
 interface BookDetailProps {
   book: Book;
@@ -27,10 +27,11 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
     setTransactions(await listTransactions(book.id));
   }
 
+  const dataVersion = useDataVersion();
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [book.id]);
+  }, [book.id, dataVersion]);
 
   const totalIn = transactions.filter((t) => t.type === "in").reduce((s, t) => s + t.amount, 0);
   const totalOut = transactions.filter((t) => t.type === "out").reduce((s, t) => s + t.amount, 0);
@@ -113,7 +114,7 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
                 <div className="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-border/10 bg-surface-2 shadow-card">
                   <button
                     onClick={() => {
-                      exportPDF(book.name, filtered);
+                      void import("../lib/export").then((m) => m.exportPDF(book.name, filtered));
                       setMenuOpen(false);
                       showToast("PDF exported", { variant: "success" });
                     }}
@@ -123,7 +124,7 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
                   </button>
                   <button
                     onClick={() => {
-                      exportCSV(book.name, filtered);
+                      void import("../lib/export").then((m) => m.exportCSV(book.name, filtered));
                       setMenuOpen(false);
                       showToast("CSV exported", { variant: "success" });
                     }}

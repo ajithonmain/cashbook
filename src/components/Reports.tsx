@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Book, Transaction } from "../lib/types";
 import { listBooks, listTransactions } from "../lib/db";
 import { formatAmount } from "../lib/format";
+import { useDataVersion } from "../lib/sync";
 
 interface BookSummary extends Book {
   totalIn: number;
@@ -11,6 +12,7 @@ interface BookSummary extends Book {
 
 export default function Reports() {
   const [summaries, setSummaries] = useState<BookSummary[] | null>(null);
+  const dataVersion = useDataVersion();
 
   useEffect(() => {
     void (async () => {
@@ -25,7 +27,7 @@ export default function Reports() {
       );
       setSummaries(withTotals);
     })();
-  }, []);
+  }, [dataVersion]);
 
   const grandIn = summaries?.reduce((s, b) => s + b.totalIn, 0) ?? 0;
   const grandOut = summaries?.reduce((s, b) => s + b.totalOut, 0) ?? 0;

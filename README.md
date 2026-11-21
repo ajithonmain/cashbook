@@ -1,20 +1,24 @@
 # CashBook
 
-A fast, private, offline-first ledger you install like a native app. Track cash in and cash out across multiple
-books, search and filter entries, and export to PDF or Excel (CSV). Your data lives on your device and
-optionally syncs to a database in your own Cloudflare account. No third-party backend, no tracking.
+A fast, private, offline-first ledger you install like a native app. Track cash in and cash out across
+multiple books, search and filter, and export to PDF or Excel (CSV). Everyone gets their own account, and
+their books sync across all their devices. You host it yourself on Cloudflare, so the data lives in your own
+account. No central server, no tracking, no third-party scripts.
 
-- Multiple books (Personal, Shop, Trip, ...) with live Net Balance, Total In, Total Out
+- Multiple books (Personal, Shop, Trip, ...) with live Net Balance, Total In and Total Out
 - Cash In / Cash Out sheet: amount, category, party, payment mode, remarks, date and time
-- Search by category or party, filter by type, category, party, payment mode
+- Search by category or party; filter by type, category, party, payment mode
 - Swipe an entry to delete, with undo
 - Export the current book as PDF or CSV
-- Installable PWA, works fully offline, syncs in the background when you are back online
-- Dark, mobile-first UI with bottom navigation
+- **Separate accounts**: each user sees only their own books
+- **Multi-device sync**: sign in on your phone, tablet and laptop; changes appear everywhere
+- **Offline first**: everything is saved on the device first, then syncs in the background when online
+- Works without an account too (data stays on the device until you sign in)
+- Installable PWA, dark mobile-first UI with bottom navigation
 
-Stack: React, Vite, Tailwind, IndexedDB (`idb`), Cloudflare Pages + Functions + D1.
+Stack: React, Vite, Tailwind, IndexedDB (`idb`), Cloudflare Pages + Functions + D1. TypeScript strict.
 
-## Deploy your own (2 minutes)
+## Deploy your own (about 3 minutes)
 
 You need a free Cloudflare account and Node 18+.
 
@@ -23,14 +27,21 @@ git clone <this-repo-url> cashbook
 cd cashbook
 npm install
 npx wrangler login      # opens your browser once
-npm run setup           # creates D1, builds, deploys, sets a sync token
+npm run setup           # creates the database, builds, deploys
 ```
 
-The script prints your live URL (`https://<name>.pages.dev`) and a sync token. Open the URL on your phone,
-add it to the home screen, then paste the token under Settings > Sync token.
+The script prints your URL (`https://<name>.pages.dev`) and an invite code. Open the URL on your phone, go to
+Settings > Create an account, enter the invite code, then add the app to your home screen.
 
-Options: `npm run setup -- --name my-ledger` to pick the project name, `--no-sync` to skip the database
-and token and run purely on-device.
+Who can sign up:
+
+| Mode | Command | Behavior |
+| --- | --- | --- |
+| Invite-only (default) | `npm run setup` | Registering needs the invite code. Share it with family or team. |
+| Open | `npm run setup -- --open-signup` | Anyone with the URL can create an account. |
+| Closed | `npm run setup -- --close-signup` | No new accounts. Existing users keep working. |
+
+Pick the project name with `--name my-ledger`. Re-running `npm run setup` is safe; it updates in place.
 
 ### Let your AI agent do it
 
@@ -38,38 +49,66 @@ Open the repo in Claude Code, Codex, Cursor, or any coding agent and say:
 
 > Read AGENTS.md and deploy this app to my Cloudflare account.
 
-[AGENTS.md](AGENTS.md) has the exact steps. The only thing you do yourself is the one-time `wrangler login`.
+The only thing you do yourself is the one-time `npx wrangler login`. See [AGENTS.md](AGENTS.md).
 
-## Develop locally
+## Develop
 
 ```bash
 npm install
-npm run dev
+npm run dev          # offline app at http://localhost:5173, no backend needed
+npm test             # unit tests
 ```
 
-The app works completely offline in dev. To test sync locally, run `npm run d1:init` and
-`npx wrangler pages dev dist` after a build, with `CASHBOOK_TOKEN` set in a `.dev.vars` file.
+To run the full stack locally (accounts and sync) see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-## How it works
+## Documentation
 
-- Every change is written to IndexedDB first, so the UI is instant and works offline.
-- Each write also lands in a sync queue. When online and a token is set, the queue is pushed to
-  `/api/sync/push` and remote changes are pulled from `/api/sync/pull`.
-- Conflicts resolve by last write wins on `updatedAt`. Deletes are soft so they propagate.
-- `functions/_middleware.ts` rejects any `/api` request without `Authorization: Bearer <CASHBOOK_TOKEN>`.
+| Doc | What it covers |
+| --- | --- |
+| [AGENTS.md](AGENTS.md) | Instructions and invariants for AI agents (also useful for humans) |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data model, offline storage, sync algorithm, accounts |
+| [docs/API.md](docs/API.md) | HTTP API reference |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deploying, updating, backups, custom domain, rotating secrets |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Running locally, tests, project layout |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design system and UX principles |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Fixes for common problems |
+| [SECURITY.md](SECURITY.md) | Security model and how to report a vulnerability |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
-## Security notes
+## Owner tools
 
-- Single-user by design. Anyone with the sync token can read and write your ledger, so treat it like a password.
-- The token is stored in the browser's `localStorage` on your devices.
-- To rotate it: `CASHBOOK_TOKEN=<new> npm run setup -- --name <project>`, then update each device.
-- For stronger protection, put the Pages project behind Cloudflare Access.
+```bash
+npm run admin -- list-users
+npm run admin -- reset-password someone@example.com    # prints a temporary password
+npm run admin -- revoke-sessions someone@example.com   # sign them out everywhere
+npm run admin -- delete-user someone@example.com --yes
+```
 
-## Customize
+There is no email service, so there is no "forgot password" email. The owner resets passwords with the command
+above. Users can change their own password, see and remove signed-in devices, and delete their account from
+Settings.
 
-- Categories and payment modes: `src/lib/types.ts`
-- Colors and theme: CSS variables in `src/index.css`
-- App icons: replace `public/icons/icon-192.png` and `icon-512.png`
+## How sync works (short version)
+
+Every change is written to the device first, so the app is instant and works offline. Each write also goes into
+a queue. When you are online and signed in, the queue uploads in batches and new changes from your other
+devices download. If two devices edit the same entry, the most recent edit wins. Details in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Security at a glance
+
+- Passwords are hashed with PBKDF2-SHA256; sessions are random tokens stored hashed; each device can be removed.
+- Every query is scoped to the signed-in user; accounts cannot read each other's data.
+- Login and registration are rate limited. Strict Content Security Policy; no external requests.
+- Your data is not end-to-end encrypted: the server (your own Cloudflare account) can read it.
+
+Full model and limits in [SECURITY.md](SECURITY.md).
+
+## Roadmap
+
+Ideas that are not built yet: sharing a book with another account, recurring entries, budgets and charts,
+receipt photos, multi-currency, import from CSV, passkeys. Contributions welcome.
 
 ## License
 

@@ -1,0 +1,5 @@
+# Copy to .dev.vars for local full-stack development (gitignored).
+# Registration is invite-only locally; enter this code in the app or the e2e test.
+INVITE_CODE=test-invite-123
+# Uncomment to let anyone register locally instead:
+# ALLOW_SIGNUP=true

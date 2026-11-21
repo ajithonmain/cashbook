@@ -43,7 +43,7 @@ export default function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            className={`press flex-1 rounded-xl py-2.5 text-sm font-bold text-white ${destructive ? "bg-out" : "bg-brand"}`}
+            className={`press flex-1 rounded-xl py-2.5 text-sm font-bold text-bg ${destructive ? "bg-out" : "bg-brand"}`}
           >
             {confirmLabel}
           </button>

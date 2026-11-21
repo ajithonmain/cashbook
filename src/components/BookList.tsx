@@ -5,6 +5,8 @@ import { formatAmount } from "../lib/format";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import Sheet from "./ui/Sheet";
 import { showToast } from "../lib/toast";
+import { useDataVersion } from "../lib/sync";
+import SyncBadge from "./ui/SyncBadge";
 
 interface BookWithBalance extends Book {
   balance: number;
@@ -46,9 +48,10 @@ export default function BookList({ onOpenBook }: BookListProps) {
     setBooks(withBalances);
   }
 
+  const dataVersion = useDataVersion();
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [dataVersion]);
 
   async function handleCreate() {
     const name = newName.trim();
@@ -70,9 +73,12 @@ export default function BookList({ onOpenBook }: BookListProps) {
 
   return (
     <div className="min-h-dvh bg-bg pb-28">
-      <div className="safe-top px-4 pb-2 pt-5">
-        <h1 className="text-2xl font-extrabold tracking-tight text-fg">Books</h1>
-        <p className="text-sm text-fg-muted">Your ledgers</p>
+      <div className="safe-top flex items-start justify-between gap-3 px-4 pb-2 pt-5">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-fg">Books</h1>
+          <p className="text-sm text-fg-muted">Your ledgers</p>
+        </div>
+        <SyncBadge />
       </div>
 
       <div className="px-4 pt-2">
@@ -175,7 +181,7 @@ export default function BookList({ onOpenBook }: BookListProps) {
             />
             <button
               onClick={() => void handleCreate()}
-              className="press w-full rounded-xl bg-brand py-3.5 text-base font-bold text-white"
+              className="press w-full rounded-xl bg-brand py-3.5 text-base font-bold text-bg"
             >
               Create book
             </button>

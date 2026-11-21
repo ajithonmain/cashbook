@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck client
+        run: npm run typecheck
+      - name: Typecheck server
+        run: npx tsc -p functions/tsconfig.json
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Prepare local D1 and secrets
+        run: |
+          printf 'INVITE_CODE=test-invite-123\n' > .dev.vars
+          npx wrangler d1 migrations apply cashbook --local
+      - name: Start local server
+        run: |
+          npx wrangler pages dev dist --port 8788 > pages-dev.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf localhost:8788/api/health && exit 0; sleep 1; done
+          cat pages-dev.log
+          exit 1
+      - name: API end-to-end tests
+        run: npm run test:e2e

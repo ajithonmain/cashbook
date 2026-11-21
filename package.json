@@ -7,11 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "d1:init": "wrangler d1 execute cashbook --local --file=./schema.sql",
     "setup": "node scripts/setup.mjs",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "admin": "node scripts/admin.mjs",
+    "db:migrate:local": "wrangler d1 migrations apply cashbook --local",
+    "test:e2e": "node tests/e2e/api.e2e.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "idb": "^8.0.0",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
@@ -29,6 +33,7 @@
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vite-plugin-pwa": "^0.20.5",
+    "vitest": "^2.1.9",
     "wrangler": "^3.90.0"
   },
   "allowScripts": {
@@ -38,5 +43,8 @@
     "core-js@3.51.0": true
   },
   "description": "Offline-first CashBook / ledger PWA. Self-host on your own Cloudflare account.",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
 }

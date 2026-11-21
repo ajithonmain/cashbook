@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -24,21 +24,15 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "/index.html",
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\/.*$/,
-            handler: "NetworkOnly",
-            options: {
-              backgroundSync: {
-                name: "cashbook-sync-queue",
-                options: { maxRetentionTime: 60 * 24 * 7 },
-              },
-            },
-          },
-        ],
+        // API calls must always reach the network; the app's own sync queue handles retries.
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],
+  test: {
+    include: ["tests/**/*.test.ts"],
+    environment: "node",
+  },
 });

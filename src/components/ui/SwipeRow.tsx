@@ -57,7 +57,7 @@ export default function SwipeRow({ children, onDelete, deleteLabel = "Delete" }:
             setX(0);
           }}
           aria-label={deleteLabel}
-          className="press flex w-full items-center justify-center bg-out text-xs font-bold text-white"
+          className="press flex w-full items-center justify-center bg-out text-xs font-bold text-bg"
         >
           {deleteLabel}
         </button>

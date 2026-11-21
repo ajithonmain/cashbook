@@ -1,91 +1,58 @@
-interface Env {
-  DB: D1Database;
-  CASHBOOK_TOKEN: string;
-}
+import type { AuthData, Env } from "../../../server/lib/auth";
+import { guard, json, readJson } from "../../../server/lib/http";
+import { validateSyncItems } from "../../../server/lib/validate";
 
-interface Book {
-  id: string;
-  name: string;
-  createdAt: number;
-  updatedAt: number;
-  deleted?: boolean;
-}
+// Last-write-wins is enforced inside SQL (the WHERE on DO UPDATE), so a stale
+// offline edit can never overwrite a newer one, even under concurrent pushes.
+const UPSERT_BOOK = `
+INSERT INTO books (user_id, id, name, created_at, updated_at, deleted, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(user_id, id) DO UPDATE SET
+  name = excluded.name, updated_at = excluded.updated_at,
+  deleted = excluded.deleted, synced_at = excluded.synced_at
+WHERE excluded.updated_at > books.updated_at`;
 
-interface Transaction {
-  id: string;
-  bookId: string;
-  type: "in" | "out";
-  amount: number;
-  category: string;
-  party: string;
-  paymentMode: string;
-  remarks: string;
-  occurredAt: number;
-  createdAt: number;
-  updatedAt: number;
-  deleted?: boolean;
-}
+const UPSERT_TXN = `
+INSERT INTO transactions
+  (user_id, id, book_id, type, amount, category, party, payment_mode, remarks,
+   occurred_at, created_at, updated_at, deleted, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(user_id, id) DO UPDATE SET
+  type = excluded.type, amount = excluded.amount, category = excluded.category,
+  party = excluded.party, payment_mode = excluded.payment_mode, remarks = excluded.remarks,
+  occurred_at = excluded.occurred_at, updated_at = excluded.updated_at,
+  deleted = excluded.deleted, synced_at = excluded.synced_at
+WHERE excluded.updated_at > transactions.updated_at`;
 
-interface SyncQueueItem {
-  entity: "book" | "transaction";
-  entityId: string;
-  op: "put" | "delete";
-  payload: Book | Transaction | null;
-}
+export const onRequestPost: PagesFunction<Env, string, AuthData> = guard(async ({ request, env, data }) => {
+  const items = validateSyncItems(await readJson(request));
+  const userId = data.user.id;
+  const now = Date.now();
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  const item = (await request.json()) as SyncQueueItem;
-
-  if (item.entity === "book") {
-    const b = item.payload as Book;
-    const existing = await env.DB.prepare("SELECT updated_at FROM books WHERE id = ?").bind(b.id).first<{ updated_at: number }>();
-    if (existing && existing.updated_at >= b.updatedAt) {
-      return Response.json({ ok: true, skipped: true });
+  const statements = items.map((item) => {
+    if (item.entity === "book") {
+      const b = item.payload;
+      return env.DB.prepare(UPSERT_BOOK).bind(userId, b.id, b.name, b.createdAt, b.updatedAt, b.deleted ? 1 : 0, now);
     }
-    await env.DB.prepare(
-      `INSERT INTO books (id, name, created_at, updated_at, deleted)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at, deleted = excluded.deleted`
-    )
-      .bind(b.id, b.name, b.createdAt, b.updatedAt, b.deleted ? 1 : 0)
-      .run();
-    return Response.json({ ok: true });
-  }
+    const t = item.payload;
+    return env.DB.prepare(UPSERT_TXN).bind(
+      userId,
+      t.id,
+      t.bookId,
+      t.type,
+      t.amount,
+      t.category,
+      t.party,
+      t.paymentMode,
+      t.remarks,
+      t.occurredAt,
+      t.createdAt,
+      t.updatedAt,
+      t.deleted ? 1 : 0,
+      now
+    );
+  });
 
-  if (item.entity === "transaction") {
-    const t = item.payload as Transaction;
-    const existing = await env.DB.prepare("SELECT updated_at FROM transactions WHERE id = ?")
-      .bind(t.id)
-      .first<{ updated_at: number }>();
-    if (existing && existing.updated_at >= t.updatedAt) {
-      return Response.json({ ok: true, skipped: true });
-    }
-    await env.DB.prepare(
-      `INSERT INTO transactions
-         (id, book_id, type, amount, category, party, payment_mode, remarks, occurred_at, created_at, updated_at, deleted)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         type = excluded.type, amount = excluded.amount, category = excluded.category,
-         party = excluded.party, payment_mode = excluded.payment_mode, remarks = excluded.remarks,
-         occurred_at = excluded.occurred_at, updated_at = excluded.updated_at, deleted = excluded.deleted`
-    )
-      .bind(
-        t.id,
-        t.bookId,
-        t.type,
-        t.amount,
-        t.category,
-        t.party,
-        t.paymentMode,
-        t.remarks,
-        t.occurredAt,
-        t.createdAt,
-        t.updatedAt,
-        t.deleted ? 1 : 0
-      )
-      .run();
-    return Response.json({ ok: true });
-  }
-
-  return Response.json({ error: "unknown entity" }, { status: 400 });
-};
+  if (statements.length > 0) await env.DB.batch(statements);
+  return json({ ok: true, accepted: items.length });
+});
