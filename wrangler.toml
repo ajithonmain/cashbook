@@ -1,10 +1,10 @@
-name = "cashbook"
+name = "cashbook-bnz"
 compatibility_date = "2024-11-01"
 pages_build_output_dir = "dist"
 
 # `npm run setup` fills in database_name / database_id for your own Cloudflare account.
 [[d1_databases]]
 binding = "DB"
-database_name = "cashbook"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_name = "cashbook-bnz"
+database_id = "9b291334-d4ae-4106-852b-a28bb14cd3dd"
 migrations_dir = "migrations"
