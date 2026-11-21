@@ -94,17 +94,19 @@ export default function BookEditSheet({ book, usedHues, onClose, onSave }: BookE
           <span id="color-label" className={labelCls}>
             Color
           </span>
-          <div role="radiogroup" aria-labelledby="color-label" className="flex flex-wrap items-center gap-x-2.5 gap-y-2.5">
+          <div role="radiogroup" aria-labelledby="color-label" className="grid grid-cols-10 place-items-center gap-y-3">
             <button
               role="radio"
               aria-checked={pickedHue === null}
+              aria-label="Auto color"
+              title="Auto"
               onClick={() => setPickedHue(null)}
-              className={`press flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold ${
-                pickedHue === null ? "border-fg bg-surface text-fg" : "border-border/15 bg-surface text-fg-muted"
+              className={`press book-swatch relative flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white before:absolute before:-inset-0.5 before:content-[''] ${
+                pickedHue === null ? "ring-2 ring-fg ring-offset-2 ring-offset-surface" : ""
               }`}
+              style={{ "--h": autoHue } as React.CSSProperties}
             >
-              <span className="book-swatch h-3 w-3 rounded-full" style={{ "--h": autoHue } as React.CSSProperties} />
-              Auto
+              A
             </button>
             {SWATCH_HUES.map((h) => {
               const selected = pickedHue === h;
