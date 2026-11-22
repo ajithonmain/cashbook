@@ -1,5 +1,5 @@
 import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { Book, Transaction, SyncQueueItem } from "./types";
+import type { Book, BookSettings, Transaction, SyncQueueItem } from "./types";
 
 interface CashBookDB extends DBSchema {
   books: { key: string; value: Book; indexes: { updatedAt: number } };
@@ -102,6 +102,15 @@ export async function updateBook(id: string, patch: { name: string } & BookStyle
   const book = await db.get("books", id);
   if (!book) return;
   const updated = { ...book, ...patch, updatedAt: Date.now() };
+  await db.put("books", updated);
+  await enqueueSync({ entity: "book", entityId: id, op: "put", payload: updated });
+}
+
+export async function updateBookSettings(id: string, settings: BookSettings): Promise<void> {
+  const db = await getDB();
+  const book = await db.get("books", id);
+  if (!book) return;
+  const updated = { ...book, settings, updatedAt: Date.now() };
   await db.put("books", updated);
   await enqueueSync({ entity: "book", entityId: id, op: "put", payload: updated });
 }

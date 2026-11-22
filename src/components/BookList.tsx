@@ -56,11 +56,16 @@ function RowSkeleton() {
   );
 }
 
+type SortMode = "recent" | "name";
+
 export default function BookList({ onOpenBook }: BookListProps) {
   const [books, setBooks] = useState<BookWithTotals[] | null>(null);
   const [editing, setEditing] = useState<BookWithTotals | "new" | null>(null);
   const [menu, setMenu] = useState<{ book: BookWithTotals; anchor: HTMLElement } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<BookWithTotals | null>(null);
+  const [search, setSearch] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [sort, setSort] = useState<SortMode>("recent");
 
   async function refresh() {
     const list = await normalizeLegacyColors(await listBooks());
@@ -106,14 +111,58 @@ export default function BookList({ onOpenBook }: BookListProps) {
   const totalIn = books?.reduce((s, b) => s + b.totalIn, 0) ?? 0;
   const totalOut = books?.reduce((s, b) => s + b.totalOut, 0) ?? 0;
 
+  const visible = (books ?? [])
+    .filter((b) => b.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b.updatedAt - a.updatedAt));
+
   return (
     <div className="min-h-dvh bg-bg px-4 pb-32 pt-[calc(env(safe-area-inset-top)+1rem)]">
       <SummaryCard label="Total balance" net={totalIn - totalOut} totalIn={totalIn} totalOut={totalOut} badge={<SyncBadge />} />
 
-      <div className="mb-1.5 mt-4 flex items-center justify-between px-1">
+      <div className="mb-1.5 mt-4 flex items-center justify-between gap-2 px-1">
         <h2 className="text-xs font-bold uppercase tracking-wider text-fg-muted">Books</h2>
-        {books && books.length > 0 && <span className="text-xs text-fg-muted">{books.length}</span>}
+        <div className="flex items-center gap-1">
+          {books && books.length > 0 && <span className="mr-1 text-xs text-fg-muted">{books.length}</span>}
+          <button
+            onClick={() => setSort(sort === "recent" ? "name" : "recent")}
+            aria-label={`Sort by ${sort === "recent" ? "name" : "recently updated"}`}
+            title={sort === "recent" ? "Recently updated" : "Name A-Z"}
+            className="press flex h-8 w-8 items-center justify-center rounded-full text-fg-muted active:bg-fg/5"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 7h10M18 7h2M4 17h2M10 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="16" cy="7" r="2" stroke="currentColor" strokeWidth="2" />
+              <circle cx="8" cy="17" r="2" stroke="currentColor" strokeWidth="2" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setSearching((s) => !s)}
+            aria-label="Search books"
+            className="press flex h-8 w-8 items-center justify-center rounded-full text-fg-muted active:bg-fg/5"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+              <path d="m20 20-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {searching && (
+        <div className="mb-2">
+          <label htmlFor="book-search" className="sr-only">
+            Search books
+          </label>
+          <input
+            id="book-search"
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search books"
+            className="h-10 w-full rounded-xl border border-border/10 bg-surface px-3.5 text-base text-fg outline-none placeholder:text-fg-muted focus:border-brand focus:ring-2 focus:ring-brand/30"
+          />
+        </div>
+      )}
 
       <div className="divide-y divide-border/10 overflow-hidden rounded-2xl border border-border/10 bg-surface shadow-card">
         {books === null && (
@@ -125,7 +174,10 @@ export default function BookList({ onOpenBook }: BookListProps) {
         {books?.length === 0 && (
           <p className="px-4 py-10 text-center text-sm text-fg-muted">No books yet. Tap New book to start.</p>
         )}
-        {books?.map((b) => {
+        {books && books.length > 0 && visible.length === 0 && (
+          <p className="px-4 py-10 text-center text-sm text-fg-muted">No books match "{search}".</p>
+        )}
+        {visible.map((b) => {
           const balance = b.totalIn - b.totalOut;
           return (
             <div key={b.id} className="relative flex items-center">

@@ -79,6 +79,44 @@ describe("book style validation", () => {
   });
 });
 
+describe("book settings validation", () => {
+  const book = { id: "b1", name: "Shop", createdAt: 1, updatedAt: 2 };
+  const settings = {
+    categories: ["Food", "Travel"],
+    paymentModes: ["Cash", "Online"],
+    categoryEnabled: true,
+    categoryRequired: false,
+    paymentModeEnabled: true,
+    paymentModeRequired: false,
+    partyEnabled: true,
+    partyRequired: false,
+    customFields: [{ id: "f1", name: "Invoice #" }],
+  };
+  it("defaults missing settings to null", () => {
+    expect(validateBook(book)).toMatchObject({ settings: null });
+  });
+  it("accepts a valid settings object", () => {
+    expect(validateBook({ ...book, settings })).toMatchObject({ settings });
+  });
+  it("rejects malformed settings", () => {
+    expect(status(() => validateBook({ ...book, settings: { ...settings, categories: "nope" } }))).toBe(400);
+    expect(status(() => validateBook({ ...book, settings: { ...settings, categoryEnabled: "yes" } }))).toBe(400);
+    expect(status(() => validateBook({ ...book, settings: { ...settings, customFields: [{ id: "f1" }] } }))).toBe(400);
+    expect(status(() => validateBook({ ...book, settings: { ...settings, categories: ["x".repeat(61)] } }))).toBe(400);
+  });
+});
+
+describe("transaction custom fields validation", () => {
+  it("accepts and defaults missing custom fields", () => {
+    expect(validateTransaction(txn).customFields).toBe(null);
+    expect(validateTransaction({ ...txn, customFields: { f1: "INV-1" } }).customFields).toEqual({ f1: "INV-1" });
+  });
+  it("rejects malformed custom fields", () => {
+    expect(status(() => validateTransaction({ ...txn, customFields: "nope" }))).toBe(400);
+    expect(status(() => validateTransaction({ ...txn, customFields: { f1: 5 } }))).toBe(400);
+  });
+});
+
 describe("sync batch validation", () => {
   it("accepts mixed entities", () => {
     const items = validateSyncItems({

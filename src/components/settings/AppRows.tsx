@@ -100,6 +100,24 @@ export function UpdateRow() {
   );
 }
 
+export function ShareRow() {
+  async function share() {
+    const url = window.location.origin;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "CashBook", text: "Track cash in and out with CashBook", url });
+      } catch {
+        // User cancelled the share sheet; nothing to do.
+      }
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    showToast("Link copied", { variant: "success" });
+  }
+
+  return <Row title="Share App" sub="Send the install link to someone" right={<PillButton onClick={() => void share()}>Share</PillButton>} />;
+}
+
 function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
   if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;

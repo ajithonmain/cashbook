@@ -5,21 +5,22 @@ import { validateSyncItems } from "../../../server/lib/validate";
 // Last-write-wins is enforced inside SQL (the WHERE on DO UPDATE), so a stale
 // offline edit can never overwrite a newer one, even under concurrent pushes.
 const UPSERT_BOOK = `
-INSERT INTO books (user_id, id, name, icon, color, created_at, updated_at, deleted, synced_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO books (user_id, id, name, icon, color, settings, created_at, updated_at, deleted, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id, id) DO UPDATE SET
-  name = excluded.name, icon = excluded.icon, color = excluded.color, updated_at = excluded.updated_at,
-  deleted = excluded.deleted, synced_at = excluded.synced_at
+  name = excluded.name, icon = excluded.icon, color = excluded.color, settings = excluded.settings,
+  updated_at = excluded.updated_at, deleted = excluded.deleted, synced_at = excluded.synced_at
 WHERE excluded.updated_at > books.updated_at`;
 
 const UPSERT_TXN = `
 INSERT INTO transactions
-  (user_id, id, book_id, type, amount, category, party, payment_mode, remarks,
+  (user_id, id, book_id, type, amount, category, party, payment_mode, remarks, custom_fields,
    occurred_at, created_at, updated_at, deleted, synced_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id, id) DO UPDATE SET
   type = excluded.type, amount = excluded.amount, category = excluded.category,
   party = excluded.party, payment_mode = excluded.payment_mode, remarks = excluded.remarks,
+  custom_fields = excluded.custom_fields,
   occurred_at = excluded.occurred_at, updated_at = excluded.updated_at,
   deleted = excluded.deleted, synced_at = excluded.synced_at
 WHERE excluded.updated_at > transactions.updated_at`;
@@ -32,7 +33,18 @@ export const onRequestPost: PagesFunction<Env, string, AuthData> = guard(async (
   const statements = items.map((item) => {
     if (item.entity === "book") {
       const b = item.payload;
-      return env.DB.prepare(UPSERT_BOOK).bind(userId, b.id, b.name, b.icon, b.color, b.createdAt, b.updatedAt, b.deleted ? 1 : 0, now);
+      return env.DB.prepare(UPSERT_BOOK).bind(
+        userId,
+        b.id,
+        b.name,
+        b.icon,
+        b.color,
+        b.settings === null || b.settings === undefined ? null : JSON.stringify(b.settings),
+        b.createdAt,
+        b.updatedAt,
+        b.deleted ? 1 : 0,
+        now
+      );
     }
     const t = item.payload;
     return env.DB.prepare(UPSERT_TXN).bind(
@@ -45,6 +57,7 @@ export const onRequestPost: PagesFunction<Env, string, AuthData> = guard(async (
       t.party,
       t.paymentMode,
       t.remarks,
+      t.customFields === null || t.customFields === undefined ? null : JSON.stringify(t.customFields),
       t.occurredAt,
       t.createdAt,
       t.updatedAt,

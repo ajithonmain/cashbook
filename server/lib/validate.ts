@@ -5,6 +5,8 @@ export interface BookRecord {
   name: string;
   icon: string;
   color: number | null;
+  /** Opaque to the server: stored and returned as-is, validated only for shape and size. */
+  settings: unknown;
   createdAt: number;
   updatedAt: number;
   deleted: boolean;
@@ -19,6 +21,7 @@ export interface TransactionRecord {
   party: string;
   paymentMode: string;
   remarks: string;
+  customFields: unknown;
   occurredAt: number;
   createdAt: number;
   updatedAt: number;
@@ -84,6 +87,58 @@ function bookColor(v: unknown): number | null {
   return v;
 }
 
+const MAX_SETTINGS_JSON = 20_000;
+const MAX_LIST_ITEMS = 200;
+
+function stringArray(v: unknown, field: string): string[] {
+  if (!Array.isArray(v)) bad(`${field} must be an array`);
+  if (v.length > MAX_LIST_ITEMS) bad(`${field} has too many items`);
+  return v.map((item) => str(item, `${field}[]`, 60));
+}
+
+function customFieldList(v: unknown): { id: string; name: string }[] {
+  if (!Array.isArray(v)) bad("settings.customFields must be an array");
+  if (v.length > MAX_LIST_ITEMS) bad("settings.customFields has too many items");
+  return v.map((item) => {
+    if (!isObject(item)) bad("settings.customFields[] must be an object");
+    return { id: str(item.id, "settings.customFields[].id", 64), name: str(item.name, "settings.customFields[].name", 60) };
+  });
+}
+
+function bool(v: unknown, field: string): boolean {
+  if (typeof v !== "boolean") bad(`${field} must be a boolean`);
+  return v;
+}
+
+/** Stored and returned opaque to the server; still shape-checked so a bad client can't poison sync for others. */
+function bookSettings(v: unknown): unknown {
+  if (v === undefined || v === null) return null;
+  if (!isObject(v)) bad("book.settings must be an object");
+  if (JSON.stringify(v).length > MAX_SETTINGS_JSON) bad("book.settings is too large");
+  return {
+    categories: stringArray(v.categories, "settings.categories"),
+    paymentModes: stringArray(v.paymentModes, "settings.paymentModes"),
+    categoryEnabled: bool(v.categoryEnabled, "settings.categoryEnabled"),
+    categoryRequired: bool(v.categoryRequired, "settings.categoryRequired"),
+    paymentModeEnabled: bool(v.paymentModeEnabled, "settings.paymentModeEnabled"),
+    paymentModeRequired: bool(v.paymentModeRequired, "settings.paymentModeRequired"),
+    partyEnabled: bool(v.partyEnabled, "settings.partyEnabled"),
+    partyRequired: bool(v.partyRequired, "settings.partyRequired"),
+    customFields: customFieldList(v.customFields),
+  };
+}
+
+function transactionCustomFields(v: unknown): unknown {
+  if (v === undefined || v === null) return null;
+  if (!isObject(v)) bad("transaction.customFields must be an object");
+  if (JSON.stringify(v).length > MAX_SETTINGS_JSON) bad("transaction.customFields is too large");
+  const out: Record<string, string> = {};
+  for (const [key, val] of Object.entries(v)) {
+    out[str(key, "transaction.customFields key", 64)] = str(val, "transaction.customFields value", 500, { allowEmpty: true });
+  }
+  return out;
+}
+
 export function validateBook(v: unknown): BookRecord {
   if (!isObject(v)) bad("book payload must be an object");
   return {
@@ -91,6 +146,7 @@ export function validateBook(v: unknown): BookRecord {
     name: str(v.name, "book.name", 100),
     icon: bookIcon(v.icon),
     color: bookColor(v.color),
+    settings: bookSettings(v.settings),
     createdAt: timestamp(v.createdAt, "book.createdAt"),
     updatedAt: timestamp(v.updatedAt, "book.updatedAt"),
     deleted: v.deleted === true,
@@ -113,6 +169,7 @@ export function validateTransaction(v: unknown): TransactionRecord {
     party: str(v.party ?? "", "transaction.party", 120, { allowEmpty: true }),
     paymentMode: str(v.paymentMode ?? "", "transaction.paymentMode", 40, { allowEmpty: true }),
     remarks: str(v.remarks ?? "", "transaction.remarks", 500, { allowEmpty: true }),
+    customFields: transactionCustomFields(v.customFields),
     occurredAt: timestamp(v.occurredAt, "transaction.occurredAt"),
     createdAt: timestamp(v.createdAt, "transaction.createdAt"),
     updatedAt: timestamp(v.updatedAt, "transaction.updatedAt"),

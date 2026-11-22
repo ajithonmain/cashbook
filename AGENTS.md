@@ -75,7 +75,12 @@ src/                      client (React)
   components/ui/          Sheet, SwipeRow, ConfirmDialog, ToastHost, Screen, SyncBadge, SummaryCard, ListGroup,
                           UpdateBanner
   components/settings/    ThemeRow, AppRows (install, version and updates, storage)
+  components/settings/    FieldListEditor (category/payment-mode list), CustomFieldsEditor
   components/BookAvatar.tsx, BookEditSheet.tsx   book icon and color
+  components/BookSettingsScreen.tsx   per-book entry-field settings (rename, category/payment-mode/party/
+                          custom-field configuration), reached from BookDetail
+  components/GenerateReportScreen.tsx   per-book report builder (filters + report type + PDF/CSV export)
+  components/FilterBar.tsx   multi-select category/party/payment-mode filters + date-range filter
   components/account/     AuthForm, AccountPanel (sessions, password, delete account)
   lib/db.ts               IndexedDB access, per-user database "scope", sync queue
   lib/sync.ts             push/pull engine, status store, useDataVersion
@@ -83,6 +88,8 @@ src/                      client (React)
   lib/auth.ts, api.ts     auth state in localStorage, fetch wrapper
   lib/theme.ts, pwa.ts    theme preference; install prompt, update checks, storage persistence
   lib/bookStyle.ts        book icon keys, name-derived hue, icon suggestion (unit tested)
+  lib/bookSettings.ts     per-book BookSettings defaults/fallback (legacy global category/payment-mode lists)
+  lib/report.ts           day/category/payment-mode/party summary builders for Generate Report
   lib/account.ts          sign in/up/out, guest-data import, account deletion
 functions/api/            Cloudflare Pages Functions routes (one file per endpoint)
   _middleware.ts          authenticates every /api/* request except health/login/register
@@ -173,7 +180,11 @@ Add an API endpoint
 2. It is authenticated automatically. Read the user from `data.user.id`. Validate input.
 3. Document it in `docs/API.md`; add e2e coverage.
 
-Change categories or payment modes: `src/lib/types.ts` constants.
+Change a book's categories or payment modes: this is user-facing, per-book state now (`Book.settings`, see
+`lib/bookSettings.ts`), edited from Book Settings > Entry Field Settings > Category/Payment Mode Settings
+(`components/settings/FieldListEditor.tsx`). `src/lib/types.ts`'s `CATEGORIES_IN`/`CATEGORIES_OUT`/
+`PAYMENT_MODES` constants are only the seed defaults for a book that has never been customized
+(`defaultBookSettings()`); do not expect them to reflect what any given book actually offers.
 Change theme colors: CSS variables in `src/index.css` (both the light and `data-theme="dark"` blocks), then re-check
 contrast and update `docs/DESIGN.md`.
 Add a book icon: add the key to `ICON_KEYS` in `src/lib/bookStyle.ts` and its SVG to `ICONS` in

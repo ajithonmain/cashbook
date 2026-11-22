@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { EntryType, Transaction } from "../lib/types";
-import { CATEGORIES_IN, CATEGORIES_OUT, PAYMENT_MODES } from "../lib/types";
+import type { Book, EntryType, Transaction } from "../lib/types";
+import { settingsOf } from "../lib/bookSettings";
 import { toDatetimeLocalValue } from "../lib/format";
 import Sheet from "./ui/Sheet";
 
 interface TransactionFormProps {
+  book: Book;
   type: EntryType;
   initial?: Transaction;
   onClose: () => void;
@@ -14,6 +15,7 @@ interface TransactionFormProps {
     party: string;
     paymentMode: string;
     remarks: string;
+    customFields?: Record<string, string>;
     occurredAt: number;
   }) => void;
   onDelete?: () => void;
@@ -23,13 +25,14 @@ const inputCls =
   "w-full rounded-xl border border-border/10 bg-surface-2 px-3 py-2.5 text-base text-fg outline-none placeholder:text-fg-muted focus:border-brand focus:ring-2 focus:ring-brand/30";
 const labelCls = "mb-1.5 block text-xs font-semibold text-fg-muted";
 
-export default function TransactionForm({ type, initial, onClose, onSubmit, onDelete }: TransactionFormProps) {
-  const categories = type === "in" ? CATEGORIES_IN : CATEGORIES_OUT;
+export default function TransactionForm({ book, type, initial, onClose, onSubmit, onDelete }: TransactionFormProps) {
+  const settings = settingsOf(book);
   const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
-  const [category, setCategory] = useState(initial?.category ?? categories[0]);
+  const [category, setCategory] = useState(initial?.category ?? settings.categories[0] ?? "");
   const [party, setParty] = useState(initial?.party ?? "");
-  const [paymentMode, setPaymentMode] = useState(initial?.paymentMode ?? PAYMENT_MODES[0]);
+  const [paymentMode, setPaymentMode] = useState(initial?.paymentMode ?? settings.paymentModes[0] ?? "");
   const [remarks, setRemarks] = useState(initial?.remarks ?? "");
+  const [customValues, setCustomValues] = useState<Record<string, string>>(initial?.customFields ?? {});
   const [occurredAt, setOccurredAt] = useState(toDatetimeLocalValue(initial?.occurredAt ?? Date.now()));
   const [error, setError] = useState("");
   const amountRef = useRef<HTMLInputElement>(null);
@@ -46,12 +49,25 @@ export default function TransactionForm({ type, initial, onClose, onSubmit, onDe
       setError("Enter an amount greater than 0");
       return;
     }
+    if (settings.categoryEnabled && settings.categoryRequired && !category) {
+      setError("Category is required");
+      return;
+    }
+    if (settings.paymentModeEnabled && settings.paymentModeRequired && !paymentMode) {
+      setError("Payment mode is required");
+      return;
+    }
+    if (settings.partyEnabled && settings.partyRequired && !party.trim()) {
+      setError("Party is required");
+      return;
+    }
     onSubmit({
       amount: amt,
-      category,
-      party: party.trim(),
-      paymentMode,
+      category: settings.categoryEnabled ? category : "",
+      party: settings.partyEnabled ? party.trim() : "",
+      paymentMode: settings.paymentModeEnabled ? paymentMode : "",
       remarks: remarks.trim(),
+      customFields: settings.customFields.length > 0 ? customValues : undefined,
       occurredAt: new Date(occurredAt).getTime(),
     });
   }
@@ -97,39 +113,49 @@ export default function TransactionForm({ type, initial, onClose, onSubmit, onDe
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="txn-category" className={labelCls}>
-              Category
-            </label>
-            <select id="txn-category" value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls}>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+        {(settings.categoryEnabled || settings.paymentModeEnabled) && (
+          <div className="grid grid-cols-2 gap-3">
+            {settings.categoryEnabled && (
+              <div>
+                <label htmlFor="txn-category" className={labelCls}>
+                  Category{settings.categoryRequired ? " *" : ""}
+                </label>
+                <select id="txn-category" value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls}>
+                  {!settings.categoryRequired && <option value="">No category</option>}
+                  {settings.categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {settings.paymentModeEnabled && (
+              <div>
+                <label htmlFor="txn-mode" className={labelCls}>
+                  Payment mode{settings.paymentModeRequired ? " *" : ""}
+                </label>
+                <select id="txn-mode" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className={inputCls}>
+                  {!settings.paymentModeRequired && <option value="">No payment mode</option>}
+                  {settings.paymentModes.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
-          <div>
-            <label htmlFor="txn-mode" className={labelCls}>
-              Payment mode
-            </label>
-            <select id="txn-mode" value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className={inputCls}>
-              {PAYMENT_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        )}
 
-        <div>
-          <label htmlFor="txn-party" className={labelCls}>
-            Party name
-          </label>
-          <input id="txn-party" value={party} onChange={(e) => setParty(e.target.value)} placeholder="Who was this with?" className={inputCls} />
-        </div>
+        {settings.partyEnabled && (
+          <div>
+            <label htmlFor="txn-party" className={labelCls}>
+              Party name{settings.partyRequired ? " *" : ""}
+            </label>
+            <input id="txn-party" value={party} onChange={(e) => setParty(e.target.value)} placeholder="Who was this with?" className={inputCls} />
+          </div>
+        )}
 
         <div>
           <label htmlFor="txn-remarks" className={labelCls}>
@@ -137,6 +163,20 @@ export default function TransactionForm({ type, initial, onClose, onSubmit, onDe
           </label>
           <input id="txn-remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Notes" className={inputCls} />
         </div>
+
+        {settings.customFields.map((field) => (
+          <div key={field.id}>
+            <label htmlFor={`txn-custom-${field.id}`} className={labelCls}>
+              {field.name}
+            </label>
+            <input
+              id={`txn-custom-${field.id}`}
+              value={customValues[field.id] ?? ""}
+              onChange={(e) => setCustomValues({ ...customValues, [field.id]: e.target.value })}
+              className={inputCls}
+            />
+          </div>
+        ))}
 
         <div>
           <label htmlFor="txn-date" className={labelCls}>

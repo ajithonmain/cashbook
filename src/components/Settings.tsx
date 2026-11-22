@@ -3,7 +3,7 @@ import { fetchSignupMode, type SignupMode } from "../lib/account";
 import { useAuth } from "../lib/auth";
 import AccountRows from "./account/AccountPanel";
 import AuthForm from "./account/AuthForm";
-import { InstallRow, StorageRow, UpdateRow } from "./settings/AppRows";
+import { InstallRow, ShareRow, StorageRow, UpdateRow } from "./settings/AppRows";
 import ThemeRow from "./settings/ThemeRow";
 import { Group, PillButton, Row } from "./ui/ListGroup";
 import Sheet from "./ui/Sheet";
@@ -50,6 +50,7 @@ export default function Settings() {
         <InstallRow />
         <UpdateRow />
         <StorageRow />
+        <ShareRow />
       </Group>
 
       {authOpen && signup && (

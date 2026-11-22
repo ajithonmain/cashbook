@@ -8,6 +8,7 @@ interface BookRow {
   name: string;
   icon: string;
   color: number | null;
+  settings: string | null;
   created_at: number;
   updated_at: number;
   deleted: number;
@@ -23,11 +24,21 @@ interface TxnRow {
   party: string;
   payment_mode: string;
   remarks: string;
+  custom_fields: string | null;
   occurred_at: number;
   created_at: number;
   updated_at: number;
   deleted: number;
   synced_at: number;
+}
+
+function parseJsonColumn(v: string | null): unknown {
+  if (v === null) return undefined;
+  try {
+    return JSON.parse(v);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -70,6 +81,7 @@ export const onRequestGet: PagesFunction<Env, string, AuthData> = guard(async ({
       name: r.name,
       icon: r.icon,
       color: r.color,
+      settings: parseJsonColumn(r.settings),
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       deleted: r.deleted === 1,
@@ -83,6 +95,7 @@ export const onRequestGet: PagesFunction<Env, string, AuthData> = guard(async ({
       party: r.party,
       paymentMode: r.payment_mode,
       remarks: r.remarks,
+      customFields: parseJsonColumn(r.custom_fields),
       occurredAt: r.occurred_at,
       createdAt: r.created_at,
       updatedAt: r.updated_at,

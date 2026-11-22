@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Book, EntryType, Transaction } from "../lib/types";
 import { getCachedEntries, setCachedEntries } from "../lib/cache";
-import { addTransaction, deleteTransaction, listTransactions, updateTransaction } from "../lib/db";
+import { addTransaction, deleteTransaction, listBooks, listTransactions, updateTransaction } from "../lib/db";
 import BookAvatar from "./BookAvatar";
 import Menu, { MenuItem } from "./ui/Menu";
 import SummaryCard from "./ui/SummaryCard";
-import FilterBar, { defaultFilters, type Filters } from "./FilterBar";
+import FilterBar, { dateRangeFor, defaultFilters, type Filters } from "./FilterBar";
 import TransactionList from "./TransactionList";
 import TransactionForm from "./TransactionForm";
+import BookSettingsScreen from "./BookSettingsScreen";
+import GenerateReportScreen from "./GenerateReportScreen";
 import { showToast } from "../lib/toast";
 import { useDataVersion } from "../lib/sync";
 
@@ -18,7 +20,8 @@ interface BookDetailProps {
 
 const NO_ENTRIES: Transaction[] = [];
 
-export default function BookDetail({ book, onBack }: BookDetailProps) {
+export default function BookDetail({ book: initialBook, onBack }: BookDetailProps) {
+  const [book, setBook] = useState(initialBook);
   // Starts from the last known entries so the screen paints real data immediately; null only on a cold start.
   const [loaded, setLoaded] = useState<Transaction[] | null>(() => getCachedEntries(book.id) ?? null);
   const transactions = loaded ?? NO_ENTRIES;
@@ -26,11 +29,14 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
   const [formType, setFormType] = useState<EntryType | null>(null);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [screen, setScreen] = useState<"detail" | "settings" | "report">("detail");
 
   async function refresh() {
-    const next = await listTransactions(book.id);
+    const [next, books] = await Promise.all([listTransactions(book.id), listBooks()]);
     setCachedEntries(book.id, next);
     setLoaded(next);
+    const live = books.find((b) => b.id === book.id);
+    if (live) setBook(live);
   }
 
   const dataVersion = useDataVersion();
@@ -43,24 +49,35 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
   const totalOut = transactions.filter((t) => t.type === "out").reduce((s, t) => s + t.amount, 0);
   const netBalance = totalIn - totalOut;
 
-  const categories = useMemo(() => Array.from(new Set(transactions.map((t) => t.category))).sort(), [transactions]);
+  const categories = useMemo(() => Array.from(new Set(transactions.map((t) => t.category).filter(Boolean))).sort(), [transactions]);
   const parties = useMemo(
     () => Array.from(new Set(transactions.map((t) => t.party).filter(Boolean))).sort(),
     [transactions]
   );
-  const paymentModes = useMemo(() => Array.from(new Set(transactions.map((t) => t.paymentMode))).sort(), [transactions]);
+  const paymentModes = useMemo(() => Array.from(new Set(transactions.map((t) => t.paymentMode).filter(Boolean))).sort(), [transactions]);
 
   const filtered = transactions.filter((t) => {
     if (filters.type !== "all" && t.type !== filters.type) return false;
-    if (filters.category && t.category !== filters.category) return false;
-    if (filters.party && t.party !== filters.party) return false;
-    if (filters.paymentMode && t.paymentMode !== filters.paymentMode) return false;
+    if (filters.categories.length && !filters.categories.includes(t.category)) return false;
+    if (filters.parties.length && !filters.parties.includes(t.party)) return false;
+    if (filters.paymentModes.length && !filters.paymentModes.includes(t.paymentMode)) return false;
+    const range = dateRangeFor(filters.date);
+    if (range && (t.occurredAt < range[0] || t.occurredAt > range[1])) return false;
     if (filters.search) {
       const q = filters.search.toLowerCase();
-      if (!t.category.toLowerCase().includes(q) && !t.party.toLowerCase().includes(q)) return false;
+      const amountStr = String(t.amount);
+      if (!t.remarks.toLowerCase().includes(q) && !amountStr.includes(q)) return false;
     }
     return true;
   });
+
+  const filtersActive =
+    filters.type !== "all" ||
+    filters.categories.length > 0 ||
+    filters.parties.length > 0 ||
+    filters.paymentModes.length > 0 ||
+    filters.date.preset !== "all" ||
+    filters.search !== "";
 
   async function handleSubmit(data: {
     amount: number;
@@ -68,6 +85,7 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
     party: string;
     paymentMode: string;
     remarks: string;
+    customFields?: Record<string, string>;
     occurredAt: number;
   }) {
     if (editing) {
@@ -96,6 +114,14 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
     });
   }
 
+  if (screen === "settings") {
+    return <BookSettingsScreen book={book} onBack={() => setScreen("detail")} onBookChanged={() => void refresh()} />;
+  }
+
+  if (screen === "report") {
+    return <GenerateReportScreen book={book} transactions={transactions} onBack={() => setScreen("detail")} />;
+  }
+
   return (
     <div className="relative min-h-dvh bg-bg pb-32">
       <div className="flex items-center justify-between px-2 pt-[calc(env(safe-area-inset-top)+0.25rem)]">
@@ -110,12 +136,14 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
         </button>
         <button
           onClick={(e) => setMenuAnchor(e.currentTarget)}
-          aria-label="Export options"
+          aria-label="Book options"
           aria-haspopup="menu"
           className="press flex h-10 w-10 items-center justify-center rounded-full text-fg active:bg-fg/5"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="12" cy="5" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="12" cy="19" r="1.6" />
           </svg>
         </button>
       </div>
@@ -136,9 +164,25 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
         ) : (
           <div className="skeleton h-[84px] rounded-2xl" />
         )}
+        {loaded && (
+          <div className="mt-1.5 flex items-center justify-between px-1 text-xs">
+            <button onClick={() => setScreen("settings")} className="press font-semibold text-fg-muted">
+              Book settings
+            </button>
+            <button onClick={() => setScreen("report")} className="press font-bold text-brand">
+              View reports
+            </button>
+          </div>
+        )}
       </div>
 
       <FilterBar filters={filters} onChange={setFilters} categories={categories} parties={parties} paymentModes={paymentModes} />
+
+      {filtersActive && loaded && (
+        <p className="px-4 pb-1 text-xs text-fg-muted">
+          Showing {filtered.length} of {transactions.length} entries
+        </p>
+      )}
 
       {loaded ? (
       <TransactionList
@@ -191,6 +235,22 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
         <Menu anchor={menuAnchor} onClose={() => setMenuAnchor(null)}>
           <MenuItem
             onClick={() => {
+              setScreen("settings");
+              setMenuAnchor(null);
+            }}
+          >
+            Book settings
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setScreen("report");
+              setMenuAnchor(null);
+            }}
+          >
+            Generate report
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
               void import("../lib/export").then((m) => m.exportPDF(book.name, filtered));
               setMenuAnchor(null);
               showToast("PDF exported", { variant: "success" });
@@ -212,6 +272,7 @@ export default function BookDetail({ book, onBack }: BookDetailProps) {
 
       {formType && (
         <TransactionForm
+          book={book}
           type={formType}
           initial={editing ?? undefined}
           onClose={() => {
