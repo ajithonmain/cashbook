@@ -7,6 +7,7 @@ interface TransactionListProps {
   runningBalanceEnd: number;
   onSelect: (t: Transaction) => void;
   onDelete: (t: Transaction) => void;
+  filtered?: boolean;
 }
 
 interface Group {
@@ -15,7 +16,7 @@ interface Group {
   items: { txn: Transaction; balance: number }[];
 }
 
-export default function TransactionList({ transactions, runningBalanceEnd, onSelect, onDelete }: TransactionListProps) {
+export default function TransactionList({ transactions, runningBalanceEnd, onSelect, onDelete, filtered = false }: TransactionListProps) {
   const sorted = transactions.slice().sort((a, b) => b.occurredAt - a.occurredAt || b.createdAt - a.createdAt);
 
   let running = runningBalanceEnd;
@@ -39,8 +40,10 @@ export default function TransactionList({ transactions, runningBalanceEnd, onSel
   if (sorted.length === 0) {
     return (
       <div className="px-8 py-14 text-center">
-        <p className="text-sm font-semibold text-fg">No entries yet</p>
-        <p className="mt-1 text-xs text-fg-muted">Tap Cash in or Cash out to add one.</p>
+        <p className="text-sm font-semibold text-fg">{filtered ? "No matching entries" : "No entries yet"}</p>
+        <p className="mt-1 text-xs text-fg-muted">
+          {filtered ? "Change or clear the filters to see more." : "Tap Cash in or Cash out to add one."}
+        </p>
       </div>
     );
   }
@@ -56,7 +59,7 @@ export default function TransactionList({ transactions, runningBalanceEnd, onSel
                 <button onClick={() => onSelect(txn)} className="block w-full px-4 py-2 text-left active:bg-fg/5">
                   <div className="flex items-baseline justify-between gap-3">
                     <p className="min-w-0 truncate text-sm text-fg">
-                      <span className="font-semibold">{txn.category}</span>
+                      <span className="font-semibold">{txn.category || "No category"}</span>
                       {(txn.party || txn.remarks) && (
                         <span className="text-fg-muted"> · {[txn.party, txn.remarks].filter(Boolean).join(" · ")}</span>
                       )}
@@ -68,7 +71,7 @@ export default function TransactionList({ transactions, runningBalanceEnd, onSel
                   </div>
                   <div className="mt-0.5 flex items-baseline justify-between gap-3 text-[11px] text-fg-muted">
                     <span>
-                      {formatTime(txn.occurredAt)} · {txn.paymentMode}
+                      {[formatTime(txn.occurredAt), txn.paymentMode].filter(Boolean).join(" · ")}
                     </span>
                     <span className="tabular">Bal {formatAmount(balance)}</span>
                   </div>

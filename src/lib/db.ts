@@ -178,6 +178,63 @@ export async function deleteTransaction(id: string): Promise<void> {
   await enqueueSync({ entity: "transaction", entityId: id, op: "delete", payload: updated });
 }
 
+/**
+ * Bulk insert for file imports: one IndexedDB transaction (all or nothing) and one queued event, so
+ * screens and sync react once instead of once per row. createdAt follows file order, which keeps the
+ * running balance stable for entries sharing a timestamp.
+ */
+export async function importTransactions(
+  bookId: string,
+  inputs: Omit<Transaction, "id" | "bookId" | "createdAt" | "updatedAt">[],
+  settings?: BookSettings
+): Promise<string[]> {
+  const db = await getDB();
+  const tx = db.transaction(["books", "transactions", "syncQueue"], "readwrite");
+  const book = await tx.objectStore("books").get(bookId);
+  if (!book || book.deleted) {
+    await tx.done;
+    throw new Error("This book no longer exists");
+  }
+
+  const now = Date.now();
+  const touched: Book = { ...book, ...(settings ? { settings } : {}), updatedAt: now };
+  const queue = tx.objectStore("syncQueue");
+  const writes: Promise<unknown>[] = [
+    tx.objectStore("books").put(touched),
+    queue.put({ id: uid(), entity: "book", entityId: bookId, op: "put", payload: touched, queuedAt: now }),
+  ];
+  const ids = inputs.map((input, i) => {
+    const txn: Transaction = { ...input, id: uid(), bookId, createdAt: now + i, updatedAt: now };
+    writes.push(
+      tx.objectStore("transactions").put(txn),
+      queue.put({ id: uid(), entity: "transaction", entityId: txn.id, op: "put", payload: txn, queuedAt: now + i })
+    );
+    return txn.id;
+  });
+
+  await Promise.all([...writes, tx.done]);
+  window.dispatchEvent(new Event(QUEUED_EVENT));
+  return ids;
+}
+
+/** Soft-deletes many entries at once (undoing an import). */
+export async function deleteTransactions(ids: string[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(["transactions", "syncQueue"], "readwrite");
+  const now = Date.now();
+  for (const id of ids) {
+    const existing = await tx.objectStore("transactions").get(id);
+    if (!existing) continue;
+    const updated = { ...existing, deleted: true, updatedAt: now };
+    await tx.objectStore("transactions").put(updated);
+    await tx
+      .objectStore("syncQueue")
+      .put({ id: uid(), entity: "transaction", entityId: id, op: "delete", payload: updated, queuedAt: now });
+  }
+  await tx.done;
+  window.dispatchEvent(new Event(QUEUED_EVENT));
+}
+
 export async function getSyncQueue(): Promise<SyncQueueItem[]> {
   const db = await getDB();
   const all = await db.getAll("syncQueue");

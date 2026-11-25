@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import Sheet from "./ui/Sheet";
+import DateField from "./ui/DateField";
+import { startOfDay } from "../lib/calendar";
 
 export type DatePreset = "all" | "today" | "yesterday" | "thisMonth" | "lastMonth" | "singleDay" | "range";
 
@@ -30,12 +32,6 @@ export const defaultFilters: Filters = {
   paymentModes: [],
   date: { preset: "all" },
 };
-
-function startOfDay(ts: number): number {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
 
 function endOfDay(ts: number): number {
   const d = new Date(ts);
@@ -291,32 +287,42 @@ export default function FilterBar({ filters, onChange, categories, parties, paym
                 ))}
               </select>
               {working.date.preset === "singleDay" && (
-                <input
-                  type="date"
-                  className={`${selectCls} mt-2`}
-                  onChange={(e) =>
-                    setDraft({ ...working, date: { preset: "singleDay", day: e.target.valueAsNumber || undefined } })
-                  }
-                />
+                <div className="mt-2">
+                  <DateField
+                    id="filter-day"
+                    label="Day"
+                    value={working.date.day}
+                    onChange={(day) => setDraft({ ...working, date: { preset: "singleDay", day } })}
+                    className={selectCls}
+                  />
+                </div>
               )}
               {working.date.preset === "range" && (
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    aria-label="Start date"
-                    className={selectCls}
-                    onChange={(e) =>
-                      setDraft({ ...working, date: { ...working.date, preset: "range", start: e.target.valueAsNumber || undefined } })
-                    }
-                  />
-                  <input
-                    type="date"
-                    aria-label="End date"
-                    className={selectCls}
-                    onChange={(e) =>
-                      setDraft({ ...working, date: { ...working.date, preset: "range", end: e.target.valueAsNumber || undefined } })
-                    }
-                  />
+                  <div>
+                    <label htmlFor="filter-start" className={labelCls}>
+                      Start date
+                    </label>
+                    <DateField
+                      id="filter-start"
+                      label="Start date"
+                      value={working.date.start}
+                      onChange={(start) => setDraft({ ...working, date: { ...working.date, start } })}
+                      className={selectCls}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="filter-end" className={labelCls}>
+                      End date
+                    </label>
+                    <DateField
+                      id="filter-end"
+                      label="End date"
+                      value={working.date.end}
+                      onChange={(end) => setDraft({ ...working, date: { ...working.date, end } })}
+                      className={selectCls}
+                    />
+                  </div>
                 </div>
               )}
             </div>

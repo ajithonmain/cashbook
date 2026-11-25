@@ -1,7 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Book, EntryType, Transaction } from "../lib/types";
 import { getCachedEntries, setCachedEntries } from "../lib/cache";
-import { addTransaction, deleteTransaction, listBooks, listTransactions, updateTransaction } from "../lib/db";
+import {
+  addTransaction,
+  deleteTransaction,
+  deleteTransactions,
+  importTransactions,
+  listBooks,
+  listTransactions,
+  updateTransaction,
+} from "../lib/db";
+import { parseEntriesCsv, withImportedOptions, withoutExisting } from "../lib/csvImport";
+import { settingsOf } from "../lib/bookSettings";
+import ImportSheet, { type ImportPreview } from "./ImportSheet";
 import BookAvatar from "./BookAvatar";
 import Menu, { MenuItem } from "./ui/Menu";
 import SummaryCard from "./ui/SummaryCard";
@@ -12,6 +23,7 @@ import BookSettingsScreen from "./BookSettingsScreen";
 import GenerateReportScreen from "./GenerateReportScreen";
 import { showToast } from "../lib/toast";
 import { useDataVersion } from "../lib/sync";
+import { totalsOf } from "../lib/totals";
 
 interface BookDetailProps {
   book: Book;
@@ -19,6 +31,7 @@ interface BookDetailProps {
 }
 
 const NO_ENTRIES: Transaction[] = [];
+const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 
 export default function BookDetail({ book: initialBook, onBack }: BookDetailProps) {
   const [book, setBook] = useState(initialBook);
@@ -30,6 +43,9 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [screen, setScreen] = useState<"detail" | "settings" | "report">("detail");
+
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   async function refresh() {
     const [next, books] = await Promise.all([listTransactions(book.id), listBooks()]);
@@ -44,10 +60,6 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [book.id, dataVersion]);
-
-  const totalIn = transactions.filter((t) => t.type === "in").reduce((s, t) => s + t.amount, 0);
-  const totalOut = transactions.filter((t) => t.type === "out").reduce((s, t) => s + t.amount, 0);
-  const netBalance = totalIn - totalOut;
 
   const categories = useMemo(() => Array.from(new Set(transactions.map((t) => t.category).filter(Boolean))).sort(), [transactions]);
   const parties = useMemo(
@@ -70,6 +82,9 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
     }
     return true;
   });
+
+  // Summary card and running balances describe the entries on screen, so they follow the filters.
+  const { totalIn, totalOut, net } = totalsOf(filtered);
 
   const filtersActive =
     filters.type !== "all" ||
@@ -114,16 +129,56 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
     });
   }
 
+  async function readImportFile(file: File) {
+    try {
+      if (file.size > MAX_IMPORT_BYTES) throw new Error("File is larger than 5 MB.");
+      const { entries, skipped } = parseEntriesCsv(await file.text());
+      const fresh = withoutExisting(entries, await listTransactions(book.id));
+      setImportPreview({ fileName: file.name, fresh, duplicates: entries.length - fresh.length, skipped });
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Could not read the file", { variant: "error" });
+    }
+  }
+
+  async function confirmImport(preview: ImportPreview) {
+    try {
+      const settings = withImportedOptions(settingsOf(book), preview.fresh);
+      const ids = await importTransactions(book.id, preview.fresh, settings ?? undefined);
+      setImportPreview(null);
+      setFilters(defaultFilters);
+      await refresh();
+      showToast(`Imported ${ids.length} ${ids.length === 1 ? "entry" : "entries"}`, {
+        variant: "success",
+        actionLabel: "Undo",
+        durationMs: 8000,
+        onAction: () => {
+          void deleteTransactions(ids).then(refresh);
+        },
+      });
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Import failed", { variant: "error" });
+    }
+  }
+
   if (screen === "settings") {
-    return <BookSettingsScreen book={book} onBack={() => setScreen("detail")} onBookChanged={() => void refresh()} />;
+    return (
+      <div className="h-full overflow-y-auto overscroll-contain">
+        <BookSettingsScreen book={book} onBack={() => setScreen("detail")} onBookChanged={() => void refresh()} />
+      </div>
+    );
   }
 
   if (screen === "report") {
-    return <GenerateReportScreen book={book} transactions={transactions} onBack={() => setScreen("detail")} />;
+    return (
+      <div className="h-full overflow-y-auto overscroll-contain">
+        <GenerateReportScreen book={book} transactions={transactions} onBack={() => setScreen("detail")} />
+      </div>
+    );
   }
 
   return (
-    <div className="relative min-h-dvh bg-bg pb-32">
+    <div className="flex h-full flex-col bg-bg">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
       <div className="flex items-center justify-between px-2 pt-[calc(env(safe-area-inset-top)+0.25rem)]">
         <button
           onClick={onBack}
@@ -157,7 +212,7 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
                 <span className="truncate">{book.name}</span>
               </span>
             }
-            net={netBalance}
+            net={net}
             totalIn={totalIn}
             totalOut={totalOut}
           />
@@ -168,6 +223,9 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
           <div className="mt-1.5 flex items-center justify-between px-1 text-xs">
             <button onClick={() => setScreen("settings")} className="press font-semibold text-fg-muted">
               Book settings
+            </button>
+            <button onClick={() => fileInput.current?.click()} className="press font-semibold text-fg-muted">
+              Import CSV
             </button>
             <button onClick={() => setScreen("report")} className="press font-bold text-brand">
               View reports
@@ -186,8 +244,9 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
 
       {loaded ? (
       <TransactionList
+        filtered={filtersActive}
         transactions={filtered}
-        runningBalanceEnd={netBalance}
+        runningBalanceEnd={net}
         onSelect={(t) => {
           setEditing(t);
           setFormType(t.type);
@@ -202,7 +261,9 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
         </div>
       )}
 
-      <div className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-border/10 bg-bg/85 px-4 pt-2 backdrop-blur-md">
+      </div>
+
+      <div className="safe-bottom flex-none border-t border-border/10 bg-bg px-4 pt-2">
         <div className="mx-auto flex max-w-md gap-2 pb-2">
           <button
             onClick={() => {
@@ -251,6 +312,14 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
           </MenuItem>
           <MenuItem
             onClick={() => {
+              fileInput.current?.click();
+              setMenuAnchor(null);
+            }}
+          >
+            Import CSV
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
               void import("../lib/export").then((m) => m.exportPDF(book.name, filtered));
               setMenuAnchor(null);
               showToast("PDF exported", { variant: "success" });
@@ -268,6 +337,29 @@ export default function BookDetail({ book: initialBook, onBack }: BookDetailProp
             Export as Excel (CSV)
           </MenuItem>
         </Menu>
+      )}
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".csv,text/csv,text/comma-separated-values"
+        className="hidden"
+        aria-label="CSV file to import"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          // Cleared so picking the same file again still fires a change event.
+          e.target.value = "";
+          if (file) void readImportFile(file);
+        }}
+      />
+
+      {importPreview && (
+        <ImportSheet
+          preview={importPreview}
+          bookName={book.name}
+          onClose={() => setImportPreview(null)}
+          onImport={() => confirmImport(importPreview)}
+        />
       )}
 
       {formType && (

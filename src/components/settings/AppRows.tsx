@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   APP_VERSION,
+  BUILD_TIME,
   applyUpdate,
   checkForUpdates,
   isIOS,
@@ -70,14 +71,21 @@ export function InstallRow() {
   return <Row title="Install" sub="Use your browser menu and choose Install app" />;
 }
 
+const BUILT_AT = new Date(BUILD_TIME).toLocaleString(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 export function UpdateRow() {
   const { status, needRefresh } = usePwa();
   const [applying, setApplying] = useState(false);
 
+  const statusText = needRefresh ? STATUS_SUB.available : STATUS_SUB[status];
+
   return (
     <Row
       title={`Version ${APP_VERSION}`}
-      sub={needRefresh ? STATUS_SUB.available : STATUS_SUB[status]}
+      sub={statusText ? `${statusText} · Built ${BUILT_AT}` : `Built ${BUILT_AT}`}
       right={
         needRefresh ? (
           <PillButton

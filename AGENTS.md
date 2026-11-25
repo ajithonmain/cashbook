@@ -80,6 +80,8 @@ src/                      client (React)
   components/BookSettingsScreen.tsx   per-book entry-field settings (rename, category/payment-mode/party/
                           custom-field configuration), reached from BookDetail
   components/GenerateReportScreen.tsx   per-book report builder (filters + report type + PDF/CSV export)
+  components/ImportSheet.tsx   preview shown before a CSV import is written (reached from BookDetail)
+  components/ui/DatePicker.tsx, DateField.tsx   calendar dialog and the field button that opens it
   components/FilterBar.tsx   multi-select category/party/payment-mode filters + date-range filter
   components/account/     AuthForm, AccountPanel (sessions, password, delete account)
   lib/db.ts               IndexedDB access, per-user database "scope", sync queue
@@ -89,6 +91,8 @@ src/                      client (React)
   lib/theme.ts, pwa.ts    theme preference; install prompt, update checks, storage persistence
   lib/bookStyle.ts        book icon keys, name-derived hue, icon suggestion (unit tested)
   lib/bookSettings.ts     per-book BookSettings defaults/fallback (legacy global category/payment-mode lists)
+  lib/csvImport.ts        parses CashBook-style CSV exports, duplicate detection (unit tested)
+  lib/calendar.ts, totals.ts   date-grid helpers and in/out/net totals (calendar unit tested)
   lib/report.ts           day/category/payment-mode/party summary builders for Generate Report
   lib/account.ts          sign in/up/out, guest-data import, account deletion
 functions/api/            Cloudflare Pages Functions routes (one file per endpoint)
@@ -152,6 +156,10 @@ Server and security
   (`PillButton` shows how). Inputs use 16px text (prevents iOS zoom); never disable pinch zoom. Every input has a `<label>`
   (`htmlFor`). Icon-only buttons need `aria-label`. Respect `prefers-reduced-motion` (already global).
 - Money is displayed with `formatAmount` and tabular numerals (`tabular` class).
+- Never put `position: fixed` elements inside a book screen. The pushed book layer is transformed, so they
+  anchor to it and drift while scrolling. Make them a flex sibling of the scrolling area (see `BookDetail`).
+- Dates are picked with `ui/DateField`, not native date inputs. Days are local midnight in ms.
+- Summary totals and running balances on a book follow the active filters.
 - Use `Sheet` for forms, `ConfirmDialog` for destructive confirmation, `showToast` for feedback. Prefer
   undo (see `handleDelete` in `BookDetail`) over confirmation where the action is reversible. Never use
   `window.alert`, `confirm`, or `prompt`.

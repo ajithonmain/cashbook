@@ -19,7 +19,14 @@ export const onRequestPost: PagesFunction<Env> = guard(async ({ request, env }) 
   if (!open) {
     if (!env.INVITE_CODE) throw new HttpError(403, "Registration is closed on this server");
     const supplied = typeof body.inviteCode === "string" ? body.inviteCode.trim() : "";
-    if (!(await safeEqualStrings(supplied, env.INVITE_CODE))) {
+    const activeCodes = env.INVITE_CODE.split(",")
+      .map((code) => code.trim())
+      .filter(Boolean);
+    let matched = false;
+    for (const code of activeCodes) {
+      if (await safeEqualStrings(supplied, code)) matched = true;
+    }
+    if (!matched) {
       await recordAttempt(env.DB, ipKey);
       throw new HttpError(403, "Invalid invite code");
     }

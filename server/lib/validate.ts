@@ -165,7 +165,7 @@ export function validateTransaction(v: unknown): TransactionRecord {
     bookId: str(v.bookId, "transaction.bookId", 64),
     type: v.type,
     amount,
-    category: str(v.category, "transaction.category", 60),
+    category: str(v.category, "transaction.category", 60, { allowEmpty: true }),
     party: str(v.party ?? "", "transaction.party", 120, { allowEmpty: true }),
     paymentMode: str(v.paymentMode ?? "", "transaction.paymentMode", 40, { allowEmpty: true }),
     remarks: str(v.remarks ?? "", "transaction.remarks", 500, { allowEmpty: true }),

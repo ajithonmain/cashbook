@@ -5,7 +5,7 @@ export interface Env {
   DB: D1Database;
   /** "true" lets anyone create an account. Otherwise INVITE_CODE is required. */
   ALLOW_SIGNUP?: string;
-  /** Shared secret an invitee must supply to register when signup is not open. */
+  /** Shared secret(s) an invitee must supply to register when signup is not open. Comma-separated for multiple active codes. */
   INVITE_CODE?: string;
 }
 

@@ -3,6 +3,7 @@ import type { Book, Transaction } from "../lib/types";
 import { settingsOf } from "../lib/bookSettings";
 import { dateRangeFor, CheckboxList, DATE_LABELS, selectCls, labelCls, type DatePreset } from "./FilterBar";
 import { REPORT_TYPES, summaryFor, type ReportType } from "../lib/report";
+import DateField from "./ui/DateField";
 
 interface GenerateReportScreenProps {
   book: Book;
@@ -84,26 +85,42 @@ export default function GenerateReportScreen({ book, transactions, onBack }: Gen
                 ))}
               </select>
               {filters.datePreset === "singleDay" && (
-                <input
-                  type="date"
-                  className={`${selectCls} mt-2`}
-                  onChange={(e) => setFilters({ ...filters, day: e.target.valueAsNumber || undefined })}
-                />
+                <div className="mt-2">
+                  <DateField
+                    id="report-day"
+                    label="Day"
+                    value={filters.day}
+                    onChange={(day) => setFilters({ ...filters, day })}
+                    className={selectCls}
+                  />
+                </div>
               )}
               {filters.datePreset === "range" && (
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    aria-label="Start date"
-                    className={selectCls}
-                    onChange={(e) => setFilters({ ...filters, start: e.target.valueAsNumber || undefined })}
-                  />
-                  <input
-                    type="date"
-                    aria-label="End date"
-                    className={selectCls}
-                    onChange={(e) => setFilters({ ...filters, end: e.target.valueAsNumber || undefined })}
-                  />
+                  <div>
+                    <label htmlFor="report-start" className={labelCls}>
+                      Start date
+                    </label>
+                    <DateField
+                      id="report-start"
+                      label="Start date"
+                      value={filters.start}
+                      onChange={(start) => setFilters({ ...filters, start })}
+                      className={selectCls}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="report-end" className={labelCls}>
+                      End date
+                    </label>
+                    <DateField
+                      id="report-end"
+                      label="End date"
+                      value={filters.end}
+                      onChange={(end) => setFilters({ ...filters, end })}
+                      className={selectCls}
+                    />
+                  </div>
                 </div>
               )}
             </div>
