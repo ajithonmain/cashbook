@@ -63,7 +63,7 @@ defaulted columns) so the previous client version keeps working while users upda
 ## Debugging tips
 
 - Inspect local data: DevTools > Application > IndexedDB > `cashbook` or `cashbook-<userId>`.
-- Inspect the server DB: `npx wrangler d1 execute cashbook --local --command "SELECT * FROM users"`.
+- Inspect the server DB: `npx wrangler d1 execute DB --local --command "SELECT * FROM users"`.
 - Sync stuck? Settings shows status and pending count. A 401 means the session ended; sign in again.
 - Server errors are logged by `pages dev` in the terminal running it.
 
