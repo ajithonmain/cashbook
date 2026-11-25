@@ -207,7 +207,7 @@ throwaway users):
 ```bash
 printf 'INVITE_CODE=test-invite-123\n' > .dev.vars        # gitignored
 npm run build
-npx wrangler d1 migrations apply cashbook --local          # npm run db:migrate:local
+npm run db:migrate:local
 npx wrangler pages dev dist --port 8788                    # do NOT pass --d1; it reads wrangler.toml
 npm run test:e2e                                           # second terminal; all checks must PASS
 ```

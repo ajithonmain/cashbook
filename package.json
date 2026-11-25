@@ -11,7 +11,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "admin": "node scripts/admin.mjs",
-    "db:migrate:local": "wrangler d1 migrations apply cashbook --local",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "test:e2e": "node tests/e2e/api.e2e.mjs"
   },
   "dependencies": {
