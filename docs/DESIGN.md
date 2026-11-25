@@ -115,6 +115,8 @@ targets stay usable.
 | `Sheet` | bottom sheet in a portal above the dock (layers: dock 40, sheet 60, confirm 70, update banner 500, toast 1000); drag handle, Escape, backdrop |
 | `BookAvatar`, `BookEditSheet` | book icon and color, picker with live preview |
 | `FilterBar` | search plus a filter button that opens a sheet; active filters show as removable chips |
+| `DateField`, `DatePicker` | field button that opens a calendar dialog (layer 70): filled header with year and date, month grid, Cancel and OK |
+| `ImportSheet` | CSV import preview: new entry count, totals, duplicates and rows that cannot be imported |
 | `SwipeRow` | swipe left to reveal Delete; the action is fully hidden at rest |
 | `ConfirmDialog` | irreversible actions only |
 | `ToastHost` | polite live region, optional Undo |

@@ -87,7 +87,7 @@ export default function App() {
 
       {book && (
         <div
-          className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-bg shadow-sheet will-change-transform"
+          className="fixed inset-0 z-50 bg-bg shadow-sheet will-change-transform"
           style={
             bookOpen
               ? { animation: "push-in 340ms var(--ease-out)" }

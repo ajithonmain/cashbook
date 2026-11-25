@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Book, EntryType, Transaction } from "../lib/types";
 import { settingsOf } from "../lib/bookSettings";
-import { toDatetimeLocalValue } from "../lib/format";
+import { combineDayAndTime, startOfDay, toTimeValue } from "../lib/calendar";
+import DateField from "./ui/DateField";
 import Sheet from "./ui/Sheet";
 
 interface TransactionFormProps {
@@ -33,8 +34,11 @@ export default function TransactionForm({ book, type, initial, onClose, onSubmit
   const [paymentMode, setPaymentMode] = useState(initial?.paymentMode ?? settings.paymentModes[0] ?? "");
   const [remarks, setRemarks] = useState(initial?.remarks ?? "");
   const [customValues, setCustomValues] = useState<Record<string, string>>(initial?.customFields ?? {});
-  const [occurredAt, setOccurredAt] = useState(toDatetimeLocalValue(initial?.occurredAt ?? Date.now()));
+  const [openedAt] = useState(() => initial?.occurredAt ?? Date.now());
+  const [day, setDay] = useState(() => startOfDay(openedAt));
+  const [time, setTime] = useState(() => toTimeValue(openedAt));
   const [error, setError] = useState("");
+  const [timeError, setTimeError] = useState("");
   const amountRef = useRef<HTMLInputElement>(null);
 
   // Focus after the sheet has finished sliding in; focusing during the animation makes mobile browsers jump.
@@ -61,6 +65,11 @@ export default function TransactionForm({ book, type, initial, onClose, onSubmit
       setError("Party is required");
       return;
     }
+    const occurredAt = combineDayAndTime(day, time);
+    if (occurredAt === null) {
+      setTimeError("Enter a time");
+      return;
+    }
     onSubmit({
       amount: amt,
       category: settings.categoryEnabled ? category : "",
@@ -68,7 +77,7 @@ export default function TransactionForm({ book, type, initial, onClose, onSubmit
       paymentMode: settings.paymentModeEnabled ? paymentMode : "",
       remarks: remarks.trim(),
       customFields: settings.customFields.length > 0 ? customValues : undefined,
-      occurredAt: new Date(occurredAt).getTime(),
+      occurredAt,
     });
   }
 
@@ -178,11 +187,34 @@ export default function TransactionForm({ book, type, initial, onClose, onSubmit
           </div>
         ))}
 
-        <div>
-          <label htmlFor="txn-date" className={labelCls}>
-            Date and time
-          </label>
-          <input id="txn-date" type="datetime-local" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} className={inputCls} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="txn-date" className={labelCls}>
+              Date
+            </label>
+            <DateField id="txn-date" label="Date" value={day} onChange={setDay} className={`${inputCls} h-12`} />
+          </div>
+          <div>
+            <label htmlFor="txn-time" className={labelCls}>
+              Time
+            </label>
+            <input
+              id="txn-time"
+              type="time"
+              value={time}
+              onChange={(e) => {
+                setTime(e.target.value);
+                setTimeError("");
+              }}
+              aria-invalid={Boolean(timeError)}
+              className={`${inputCls} h-12`}
+            />
+            {timeError && (
+              <p role="alert" className="mt-1.5 text-sm text-out">
+                {timeError}
+              </p>
+            )}
+          </div>
         </div>
 
         <button

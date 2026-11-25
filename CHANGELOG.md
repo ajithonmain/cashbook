@@ -5,6 +5,9 @@ All notable changes are documented here. Format based on Keep a Changelog; versi
 ## [Unreleased]
 
 ### Added
+- Import CSV into a book (Date, Time, Remark, Category, Mode, Cash In, Cash Out columns), with a preview,
+  duplicate skipping, new categories and payment modes added to the book, and Undo.
+- Calendar date picker for entry dates and date filters; entry date and time are separate fields.
 - Separate user accounts (email and password) with invite-only, open, or closed sign-up.
 - Multi-device sync: books and entries follow each account across devices; background push and paginated pull.
 - Per-device sessions with a signed-in devices list, remote sign-out, password change, and account deletion.
@@ -22,6 +25,10 @@ All notable changes are documented here. Format based on Keep a Changelog; versi
 - Android and browser Back return from a book to the list.
 
 ### Changed
+
+- A book's summary card and running balances now follow the active filters.
+- Fixed the Cash In and Cash Out bar drifting to the middle of the screen while scrolling.
+- Fixed sync rejecting entries that have no category.
 
 - Smooth motion everywhere: tabs stay mounted and cross-fade (no reload, no flicker, scroll kept), books push in as a layer with Android and browser Back support, a sliding dock indicator, enter and exit animations for sheets, dialogs, menus and toasts, theme cross-fade, and instant paint from cached entries.
 - Book Auto color now avoids colors already used by other books (minimum 28 degrees apart) and is stored; legacy books get distinct colors once. 18 color presets plus a custom hue slider.

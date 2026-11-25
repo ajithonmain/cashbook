@@ -50,6 +50,9 @@ describe("transaction validation", () => {
     expect(out.party).toBe("");
     expect(out.deleted).toBe(false);
   });
+  it("accepts an entry with no category", () => {
+    expect(validateTransaction({ ...txn, category: "" }).category).toBe("");
+  });
   it("rejects non-positive, non-finite and huge amounts", () => {
     for (const amount of [0, -5, Number.NaN, Infinity, 1e12, "100"]) {
       expect(status(() => validateTransaction({ ...txn, amount }))).toBe(400);

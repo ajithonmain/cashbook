@@ -77,7 +77,7 @@ Transaction record:
   "occurredAt": 1790000000000, "createdAt": 1790000000000, "updatedAt": 1790000000000, "deleted": false
 }
 ```
-Limits: amount finite, greater than 0 and below 1e12; category up to 60 chars; party 120; paymentMode 40;
+Limits: amount finite, greater than 0 and below 1e12; category up to 60 chars (may be empty); party 120; paymentMode 40;
 remarks 500; `customFields` is an object of id -> value (each up to 500 chars, object capped at 20,000 chars
 of JSON) or `null`/omitted; ids up to 64; timestamps are integer milliseconds between 0 and year 2100.
 
